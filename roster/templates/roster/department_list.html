@@ -25,7 +25,7 @@
 </div>
 
 <div class="row g-3">
-  {% for dept in departments %}
+  {% for dept in page_obj %}
   <div class="col-md-6 col-lg-4">
     <div class="card h-100">
       <div class="card-body">
@@ -69,7 +69,7 @@
 
         <div class="d-flex gap-3 mt-2">
           <div class="text-center">
-            <div style="font-size:1.1rem;font-weight:700;color:#2E86C1;">{{ dept.units.count }}</div>
+            <div style="font-size:1.1rem;font-weight:700;color:#2E86C1;">{{ dept.unit_count }}</div>
             <small class="text-muted">Units</small>
           </div>
         </div>
@@ -94,4 +94,24 @@
   </div>
   {% endfor %}
 </div>
+
+{% if page_obj.has_other_pages %}
+<nav class="d-flex justify-content-center mt-3">
+  <ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_hospital %}&hospital={{ selected_hospital }}{% endif %}">«</a></li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+      <li class="page-item"><a class="page-link" href="?page={{ num }}{% if selected_hospital %}&hospital={{ selected_hospital }}{% endif %}">{{ num }}</a></li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_hospital %}&hospital={{ selected_hospital }}{% endif %}">»</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
 {% endblock %}

@@ -2,6 +2,7 @@ import calendar
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -34,8 +35,13 @@ def dashboard(request):
 
 @login_required
 def hospital_list(request):
-    hospitals = Hospital.objects.prefetch_related('departments__units__staff', 'departments__units__rosters').all()
-    return render(request, 'roster/hospital_list.html', {'hospitals': hospitals})
+    hospitals = Hospital.objects.annotate(
+        dept_count=Count('departments'),
+        staff_count=Count('departments__units__staff', distinct=True),
+    )
+    paginator = Paginator(hospitals, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'roster/hospital_list.html', {'page_obj': page_obj})
 
 
 @login_required
@@ -74,12 +80,17 @@ def hospital_delete(request, pk):
 @login_required
 def department_list(request):
     hospital_id = request.GET.get('hospital')
-    departments = Department.objects.select_related('hospital').prefetch_related('units__staff', 'units__rosters')
+    departments = Department.objects.select_related('hospital').prefetch_related('units').annotate(
+        unit_count=Count('units'),
+        staff_count=Count('units__staff', filter=Q(units__staff__is_active=True), distinct=True),
+    )
     hospitals = Hospital.objects.all()
     if hospital_id:
         departments = departments.filter(hospital_id=hospital_id)
+    paginator = Paginator(departments, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'roster/department_list.html', {
-        'departments': departments,
+        'page_obj': page_obj,
         'hospitals': hospitals,
         'selected_hospital': int(hospital_id) if hospital_id else None,
     })
@@ -123,7 +134,10 @@ def department_delete(request, pk):
 def unit_list(request):
     dept_id = request.GET.get('dept')
     hospital_id = request.GET.get('hospital')
-    units = Unit.objects.select_related('department__hospital').prefetch_related('staff', 'rosters')
+    units = Unit.objects.select_related('department__hospital').prefetch_related('staff').annotate(
+        staff_count=Count('staff', filter=Q(staff__is_active=True), distinct=True),
+        roster_count=Count('rosters'),
+    )
     hospitals = Hospital.objects.all()
     departments = Department.objects.select_related('hospital').all()
     if hospital_id:
@@ -131,8 +145,10 @@ def unit_list(request):
         units = units.filter(department__hospital_id=hospital_id)
     if dept_id:
         units = units.filter(department_id=dept_id)
+    paginator = Paginator(units, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'roster/unit_list.html', {
-        'units': units,
+        'page_obj': page_obj,
         'hospitals': hospitals,
         'departments': departments,
         'selected_dept': int(dept_id) if dept_id else None,
@@ -194,8 +210,10 @@ def staff_list(request):
         units = units.filter(department__hospital_id=hospital_id)
     if dept_id:
         units = units.filter(department_id=dept_id)
+    paginator = Paginator(staff_qs, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'roster/staff_list.html', {
-        'staff_list': staff_qs,
+        'page_obj': page_obj,
         'hospitals': hospitals,
         'departments': departments,
         'units': units,
@@ -310,8 +328,12 @@ def staff_by_unit(request, unit_id):
 
 @login_required
 def roster_list(request):
-    rosters = Roster.objects.select_related('unit__department__hospital').all()
-    return render(request, 'roster/roster_list.html', {'rosters': rosters})
+    rosters = Roster.objects.select_related('unit__department__hospital').annotate(
+        entries_count=Count('entries'),
+    )
+    paginator = Paginator(rosters, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'roster/roster_list.html', {'page_obj': page_obj})
 
 
 @login_required

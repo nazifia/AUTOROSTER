@@ -24,7 +24,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for r in rosters %}
+        {% for r in page_obj %}
         <tr>
           <td style="font-weight:600;font-size:.875rem;">{{ r.roster_title }}</td>
           <td style="font-size:.82rem;">{{ r.unit.unit_name|truncatechars:35 }}</td>
@@ -34,7 +34,7 @@
             </span>
           </td>
           <td style="font-size:.875rem;">{{ r.num_slots }}</td>
-          <td style="font-size:.875rem;">{{ r.entries.count }}</td>
+          <td style="font-size:.875rem;">{{ r.entries_count }}</td>
           <td style="font-size:.82rem;color:#6b7280;">{{ r.created_at|date:"M d, Y" }}</td>
           <td class="text-end">
             <div class="d-flex gap-1 justify-content-end">
@@ -62,4 +62,24 @@
     </table>
   </div>
 </div>
+
+{% if page_obj.has_other_pages %}
+<nav class="d-flex justify-content-center mt-3">
+  <ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+      <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
 {% endblock %}
