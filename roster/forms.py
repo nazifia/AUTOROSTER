@@ -284,16 +284,49 @@ class RosterGenerateForm(forms.Form):
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         label='Rotate shifts weekly (M↔A each week)',
     )
-    ptech_post_cm_rest = forms.BooleanField(
+    ptech_post_cm_rest = forms.IntegerField(
         required=False,
-        initial=True,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        label='Give Mon–Tue rest days after Night weekend duty',
+        initial=2,
+        min_value=0,
+        max_value=7,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '7'}),
+        label='Rest days after Night duty (0 = none, 2–7)',
     )
     ptech_cm_min_gap = forms.IntegerField(
         initial=0, min_value=0, max_value=30, required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
         label='Min days between Night assignments for same staff (0 = no restriction)',
+    )
+
+    ptech_morning_work_days = forms.IntegerField(
+        initial=5, min_value=1, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
+        label='Morning: work days',
+    )
+    ptech_morning_off_days = forms.IntegerField(
+        initial=2, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '30'}),
+        label='Morning: off days',
+    )
+    ptech_afternoon_work_days = forms.IntegerField(
+        initial=5, min_value=1, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
+        label='Afternoon: work days',
+    )
+    ptech_afternoon_off_days = forms.IntegerField(
+        initial=2, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '30'}),
+        label='Afternoon: off days',
+    )
+    ptech_night_work_days = forms.IntegerField(
+        initial=2, min_value=1, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
+        label='Night: work days',
+    )
+    ptech_night_off_days = forms.IntegerField(
+        initial=5, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '30'}),
+        label='Night: off days',
     )
 
     def clean(self):

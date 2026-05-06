@@ -427,9 +427,15 @@ def roster_generate(request):
                 morning_staff=cd.get('ptech_morning_staff') or [],
                 afternoon_staff=cd.get('ptech_afternoon_staff') or [],
                 cm_staff=cd.get('ptech_cm_staff') or [],
-                post_cm_rest=bool(cd.get('ptech_post_cm_rest')),
+                post_cm_rest_days=int(cd.get('ptech_post_cm_rest') or 0),
                 rotate_shifts=bool(cd.get('ptech_rotate_shifts')),
                 cm_min_gap=int(cd.get('ptech_cm_min_gap') or 0),
+                morning_work_days=int(cd.get('ptech_morning_work_days') or 5),
+                morning_off_days=int(cd.get('ptech_morning_off_days') or 0),
+                afternoon_work_days=int(cd.get('ptech_afternoon_work_days') or 5),
+                afternoon_off_days=int(cd.get('ptech_afternoon_off_days') or 0),
+                night_work_days=int(cd.get('ptech_night_work_days') or 2),
+                night_off_days=int(cd.get('ptech_night_off_days') or 5),
             )
         else:
             generate_roster_entries(

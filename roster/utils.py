@@ -136,120 +136,85 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
 
 
 def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_staff,
-                                   post_cm_rest=True, rotate_shifts=True, cm_min_gap=0):
+                                   post_cm_rest_days=2, rotate_shifts=True, cm_min_gap=0,
+                                   morning_work_days=5, morning_off_days=2,
+                                   afternoon_work_days=5, afternoon_off_days=2,
+                                   night_work_days=2, night_off_days=5):
     """
     Generate PtechStaffEntry records (staff×day matrix) for a PTech roster.
 
-    morning_staff  – staff starting on M shift for week 1
-    afternoon_staff – staff starting on A shift for week 1
-    cm_staff       – ordered list of staff who rotate CM duty on weekends
-    post_cm_rest   – give Mon+Tue off after each CM weekend
-    rotate_shifts  – alternate M/A each week; if False, shift is fixed for month
-    cm_min_gap     – minimum days between CM assignments for the same staff
+    Each shift pool cycles: work_days on → off_days off → repeat.
+    Staff within a pool are staggered so coverage is continuous:
+      staff[i] phase = (i × work_days) % cycle_length
+
+    morning_staff   – staff assigned Morning (M) shift
+    afternoon_staff – staff assigned Afternoon (A) shift
+    cm_staff        – staff assigned Night (N) shift
+    *_work_days     – consecutive work days per cycle for that shift
+    *_off_days      – consecutive off days per cycle for that shift
     """
     PtechStaffEntry.objects.filter(roster=roster).delete()
 
     year, month = roster.year, roster.month
     _, num_days = calendar.monthrange(year, month)
-    first_day = date(year, month, 1)
 
-    morning_ids = {s.id for s in morning_staff}
-    afternoon_ids = {s.id for s in afternoon_staff}
-    known_ids = morning_ids | afternoon_ids
-    # CM-only staff (not in M/A pools) still need daily entries
-    extra_cm = [s for s in cm_staff if s.id not in known_ids]
-    all_staff = list(morning_staff) + list(afternoon_staff) + extra_cm
+    morning_id_set = {s.id for s in morning_staff}
+    afternoon_id_set = {s.id for s in afternoon_staff}
+    night_id_set = {s.id for s in cm_staff}
+    known_ids = morning_id_set | afternoon_id_set
+    extra_night = [s for s in cm_staff if s.id not in known_ids]
+    all_staff = list(morning_staff) + list(afternoon_staff) + extra_night
     if not all_staff:
         return
 
-    initial_shift = {s.id: 'M' for s in morning_staff}
-    initial_shift.update({s.id: 'A' for s in afternoon_staff})
-
     unavailability = _build_unavailability_map([s.id for s in all_staff], year, month)
 
-    # First Monday on or after month start (week-rotation anchor)
-    fdw = first_day.weekday()
-    first_monday = first_day if fdw == 0 else first_day + timedelta(days=(7 - fdw) % 7)
+    # Cycle lengths (0 means always working — no off days in cycle)
+    def _cycle(work, off):
+        return (work + off) if work > 0 else 0
 
-    # Collect SAT-SUN pairs within the month
-    weekends = []
-    for d in range(1, num_days + 1):
-        cur = date(year, month, d)
-        if cur.weekday() == 5:  # Saturday
-            next_d = date(year, month, d + 1) if d + 1 <= num_days else None
-            sun = next_d if (next_d and next_d.weekday() == 6) else None
-            weekends.append((cur, sun))
+    m_cycle = _cycle(morning_work_days, morning_off_days)
+    a_cycle = _cycle(afternoon_work_days, afternoon_off_days)
+    n_cycle = _cycle(night_work_days, night_off_days)
 
-    # Assign CM staff to each weekend — respects availability and min_gap (like Pharm's _pick)
-    cm_pool = list(cm_staff)
-    cm_date_staff = {}  # date → staff obj
-    last_cm_date = {}   # staff_id → last date assigned CM
-    cm_idx = 0
-    assigned_cm_per_weekend = {}  # (sat, sun) → staff obj (for post_cm_map below)
+    # Stagger offset per staff so coverage is continuous across the pool
+    m_phase = {s.id: (i * morning_work_days) % m_cycle if m_cycle > 0 else 0
+               for i, s in enumerate(morning_staff)}
+    a_phase = {s.id: (i * afternoon_work_days) % a_cycle if a_cycle > 0 else 0
+               for i, s in enumerate(afternoon_staff)}
+    n_phase = {s.id: (i * night_work_days) % n_cycle if n_cycle > 0 else 0
+               for i, s in enumerate(cm_staff)}
 
-    for sat, sun in weekends:
-        if not cm_pool:
-            break
-        sat_unavail = unavailability.get(sat, set())
-        chosen = None
-        for offset in range(len(cm_pool)):
-            candidate = cm_pool[(cm_idx + offset) % len(cm_pool)]
-            if candidate.id in sat_unavail:
-                continue
-            if cm_min_gap > 0 and candidate.id in last_cm_date:
-                if (sat - last_cm_date[candidate.id]).days < cm_min_gap:
-                    continue
-            chosen = candidate
-            cm_idx = (cm_idx + offset + 1) % len(cm_pool)
-            break
-        if chosen is None:
-            # Fallback: ignore constraints rather than leave weekend unassigned
-            chosen = cm_pool[cm_idx % len(cm_pool)]
-            cm_idx = (cm_idx + 1) % len(cm_pool)
-        last_cm_date[chosen.id] = sat
-        cm_date_staff[sat] = chosen
-        if sun:
-            cm_date_staff[sun] = chosen
-        assigned_cm_per_weekend[(sat, sun)] = chosen
-
-    # Build post-CM rest dates: Mon + Tue after each CM weekend
-    post_cm_map = {}  # staff_id → set of dates
-    if post_cm_rest and cm_pool:
-        for (sat, sun), cm in assigned_cm_per_weekend.items():
-            base = sun or sat
-            for offset in (1, 2):
-                rest = base + timedelta(days=offset)
-                if rest.month == month:
-                    post_cm_map.setdefault(cm.id, set()).add(rest)
+    def _in_work_phase(day_1idx, phase, work_days, cycle):
+        if cycle <= 0 or work_days <= 0:
+            return True
+        return ((day_1idx - 1 + phase) % cycle) < work_days
 
     entries = []
     for d in range(1, num_days + 1):
         cur = date(year, month, d)
         unavail = unavailability.get(cur, set())
-        is_weekend = cur.weekday() >= 5
-
-        # Week index: 0 = partial days before first Monday, 1 = first full week, …
-        if cur < first_monday:
-            week_idx = 0
-        else:
-            week_idx = 1 + (cur - first_monday).days // 7
 
         for staff in all_staff:
-            cm_this = cm_date_staff.get(cur)
-            if cm_this and cm_this.id == staff.id:
-                shift = 'N'
-            elif staff.id in unavail:
+            if staff.id in unavail:
                 shift = 'L'
-            elif staff.id in post_cm_map and cur in post_cm_map[staff.id]:
-                shift = 'O'
-            else:
-                base = initial_shift.get(staff.id, 'M')
-                if rotate_shifts:
-                    # Treat partial week same as week 1; alternate from week 1 onwards
-                    eff = max(week_idx, 1)
-                    shift = base if (eff - 1) % 2 == 0 else ('A' if base == 'M' else 'M')
+            elif staff.id in night_id_set:
+                if _in_work_phase(d, n_phase[staff.id], night_work_days, n_cycle):
+                    shift = 'N'
                 else:
-                    shift = base
+                    # Night off-days: fall back to M/A assignment if also in those pools
+                    if staff.id in morning_id_set:
+                        shift = 'M' if _in_work_phase(d, m_phase[staff.id], morning_work_days, m_cycle) else 'O'
+                    elif staff.id in afternoon_id_set:
+                        shift = 'A' if _in_work_phase(d, a_phase[staff.id], afternoon_work_days, a_cycle) else 'O'
+                    else:
+                        shift = 'O'
+            elif staff.id in morning_id_set:
+                shift = 'M' if _in_work_phase(d, m_phase[staff.id], morning_work_days, m_cycle) else 'O'
+            elif staff.id in afternoon_id_set:
+                shift = 'A' if _in_work_phase(d, a_phase[staff.id], afternoon_work_days, a_cycle) else 'O'
+            else:
+                shift = 'O'
 
             entries.append(PtechStaffEntry(roster=roster, staff=staff, date=cur, shift=shift))
 

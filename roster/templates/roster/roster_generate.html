@@ -302,38 +302,19 @@
       <div class="section-card ptech-section" id="ptech-section" style="display:none;">
         <h6><i class="fas fa-clock me-2" style="color:#D4AC0D;"></i>PTech Shift Configuration</h6>
 
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <div class="form-check form-switch mb-2">
-              {{ form.ptech_rotate_shifts }}
-              <label class="form-check-label ms-2" for="{{ form.ptech_rotate_shifts.id_for_label }}">
-                <strong>{{ form.ptech_rotate_shifts.label }}</strong>
-              </label>
-            </div>
-            <div class="form-check form-switch">
-              {{ form.ptech_post_cm_rest }}
-              <label class="form-check-label ms-2" for="{{ form.ptech_post_cm_rest.id_for_label }}">
-                <strong>{{ form.ptech_post_cm_rest.label }}</strong>
-              </label>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="min-gap-row mt-2">
-              <label for="{{ form.ptech_cm_min_gap.id_for_label }}" class="text-muted" style="font-size:.82rem;">
-                <i class="fas fa-calendar-minus me-1"></i>{{ form.ptech_cm_min_gap.label }}:
-              </label>
-              {{ form.ptech_cm_min_gap }}
-            </div>
-            {% if form.ptech_cm_min_gap.errors %}<div class="text-danger small mt-1">{{ form.ptech_cm_min_gap.errors }}</div>{% endif %}
-          </div>
-        </div>
-
         <div class="row g-3">
           <div class="col-md-4">
             <label class="form-label fw-semibold" style="color:#1A5276;">
               <span class="shift-badge shift-M-badge">M</span> Morning Staff
             </label>
-            <p class="staff-hint">Assigned Morning shift</p>
+            <div class="d-flex gap-2 align-items-center mb-2" style="font-size:.82rem; color:#4b5563;">
+              <i class="fas fa-sun me-1"></i>
+              <label for="{{ form.ptech_morning_work_days.id_for_label }}" class="mb-0">Work:</label>
+              {{ form.ptech_morning_work_days }}
+              <span>days &nbsp; Off:</span>
+              {{ form.ptech_morning_off_days }}
+              <span>days</span>
+            </div>
             <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-morning-grid">
               {% for choice in form.ptech_morning_staff %}
               <label data-staff-id="{{ choice.data.value }}">
@@ -342,13 +323,21 @@
               {% endfor %}
             </div>
             {% if form.ptech_morning_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_morning_staff.errors }}</div>{% endif %}
+            {% if form.ptech_morning_work_days.errors %}<div class="text-danger small mt-1">{{ form.ptech_morning_work_days.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-4">
             <label class="form-label fw-semibold" style="color:#1E8449;">
               <span class="shift-badge shift-A-badge">A</span> Afternoon Staff
             </label>
-            <p class="staff-hint">Assigned Afternoon shift</p>
+            <div class="d-flex gap-2 align-items-center mb-2" style="font-size:.82rem; color:#4b5563;">
+              <i class="fas fa-cloud-sun me-1"></i>
+              <label for="{{ form.ptech_afternoon_work_days.id_for_label }}" class="mb-0">Work:</label>
+              {{ form.ptech_afternoon_work_days }}
+              <span>days &nbsp; Off:</span>
+              {{ form.ptech_afternoon_off_days }}
+              <span>days</span>
+            </div>
             <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-afternoon-grid">
               {% for choice in form.ptech_afternoon_staff %}
               <label data-staff-id="{{ choice.data.value }}">
@@ -357,13 +346,21 @@
               {% endfor %}
             </div>
             {% if form.ptech_afternoon_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_afternoon_staff.errors }}</div>{% endif %}
+            {% if form.ptech_afternoon_work_days.errors %}<div class="text-danger small mt-1">{{ form.ptech_afternoon_work_days.errors }}</div>{% endif %}
           </div>
 
           <div class="col-md-4">
             <label class="form-label fw-semibold" style="color:#6C3483;">
               <span class="shift-badge shift-N-badge">N</span> Night Staff
             </label>
-            <p class="staff-hint">These staff rotate Night duty </p>
+            <div class="d-flex gap-2 align-items-center mb-2" style="font-size:.82rem; color:#4b5563;">
+              <i class="fas fa-moon me-1"></i>
+              <label for="{{ form.ptech_night_work_days.id_for_label }}" class="mb-0">Work:</label>
+              {{ form.ptech_night_work_days }}
+              <span>days &nbsp; Off:</span>
+              {{ form.ptech_night_off_days }}
+              <span>days</span>
+            </div>
             <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-cm-grid">
               {% for choice in form.ptech_cm_staff %}
               <label data-staff-id="{{ choice.data.value }}">
@@ -372,6 +369,7 @@
               {% endfor %}
             </div>
             {% if form.ptech_cm_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_cm_staff.errors }}</div>{% endif %}
+            {% if form.ptech_night_work_days.errors %}<div class="text-danger small mt-1">{{ form.ptech_night_work_days.errors }}</div>{% endif %}
           </div>
         </div>
       </div>
