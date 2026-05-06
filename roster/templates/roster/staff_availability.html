@@ -1,0 +1,77 @@
+{% extends 'roster/base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Availability — {{ staff.display_name }}{% endblock %}
+{% block page_title %}Unavailability — {{ staff.display_name }}{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'staff_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i> Back to Staff
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Add form -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header" style="background:#1B4F72;color:#fff;font-weight:600;font-size:.9rem;">
+        <i class="fas fa-calendar-times me-2"></i> Mark Unavailable Period
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3" style="font-size:.83rem;">
+          Dates added here will be skipped when generating rosters — the next available staff will cover those days.
+        </p>
+        {% crispy form %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing records -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header" style="background:#154360;color:#fff;font-weight:600;font-size:.9rem;">
+        <i class="fas fa-list me-2"></i> Recorded Unavailability Periods
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-modern mb-0">
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>To</th>
+              <th>Reason</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rec in records %}
+            <tr>
+              <td style="font-size:.875rem;font-weight:600;">{{ rec.start_date|date:"d M Y" }}</td>
+              <td style="font-size:.875rem;">{{ rec.end_date|date:"d M Y" }}</td>
+              <td style="font-size:.82rem;color:#6b7280;">{{ rec.reason|default:"—" }}</td>
+              <td class="text-end">
+                <form method="post" action="{% url 'staff_availability_delete' rec.pk %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                    onclick="return confirm('Remove this unavailability record?')">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center py-5 text-muted">
+                <i class="fas fa-calendar-check fa-3x mb-3 opacity-25 d-block"></i>
+                No unavailability periods recorded. {{ staff.display_name }} is available all days.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

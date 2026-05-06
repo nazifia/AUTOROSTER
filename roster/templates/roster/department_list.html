@@ -1,0 +1,97 @@
+{% extends 'roster/base.html' %}
+{% block title %}Departments{% endblock %}
+{% block page_title %}Departments{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'department_create' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus me-1"></i> Add Department
+  </a>
+{% endblock %}
+
+{% block content %}
+<!-- Hospital filter -->
+<div class="card mb-4">
+  <div class="card-body py-2 px-4">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span style="font-weight:600;font-size:.875rem;color:#374151;">Filter by Hospital:</span>
+      <a href="{% url 'department_list' %}" class="btn btn-sm {% if not selected_hospital %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+      {% for h in hospitals %}
+      <a href="?hospital={{ h.pk }}" class="btn btn-sm {% if selected_hospital == h.pk %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ h.name|truncatechars:30 }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for dept in departments %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:40px;height:40px;background:#e8f0f7;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-hospital-alt" style="color:#1B4F72;"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:.9rem;color:#1B4F72;">{{ dept.department_name }}</div>
+              <small class="text-muted">{{ dept.hospital.name|truncatechars:30 }}</small>
+            </div>
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-light" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{% url 'department_edit' dept.pk %}"><i class="fas fa-edit me-2"></i>Edit</a></li>
+              <li><a class="dropdown-item" href="{% url 'unit_create' %}?dept={{ dept.pk }}"><i class="fas fa-plus me-2"></i>Add Unit</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{% url 'department_delete' dept.pk %}"><i class="fas fa-trash me-2"></i>Delete</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Units list -->
+        {% if dept.units.all %}
+        <div class="mb-2">
+          {% for unit in dept.units.all %}
+          <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-1 rounded" style="background:#f8fafc;font-size:.8rem;">
+            <span style="color:#374151;"><i class="fas fa-layer-group me-1 text-muted"></i>{{ unit.unit_name|truncatechars:35 }}</span>
+            <div class="d-flex gap-1">
+              <a href="{% url 'unit_edit' unit.pk %}" class="btn btn-xs btn-outline-secondary py-0 px-1" style="font-size:.7rem;" title="Edit unit"><i class="fas fa-edit"></i></a>
+              <a href="{% url 'staff_list' %}?unit={{ unit.pk }}" class="btn btn-xs btn-outline-primary py-0 px-1" style="font-size:.7rem;" title="View staff"><i class="fas fa-users"></i></a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-2" style="font-size:.82rem;"><i class="fas fa-info-circle me-1"></i>No units yet</p>
+        {% endif %}
+
+        <div class="d-flex gap-3 mt-2">
+          <div class="text-center">
+            <div style="font-size:1.1rem;font-weight:700;color:#2E86C1;">{{ dept.units.count }}</div>
+            <small class="text-muted">Units</small>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent d-flex gap-2">
+        <a href="{% url 'unit_list' %}?dept={{ dept.pk }}" class="btn btn-outline-primary btn-sm flex-fill">
+          <i class="fas fa-layer-group me-1"></i> Units
+        </a>
+        <a href="{% url 'unit_create' %}?dept={{ dept.pk }}" class="btn btn-outline-secondary btn-sm flex-fill">
+          <i class="fas fa-plus me-1"></i> Add Unit
+        </a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center py-5">
+    <i class="fas fa-hospital fa-4x text-muted opacity-25 mb-3"></i>
+    <h5 class="text-muted">No departments yet</h5>
+    <a href="{% url 'department_create' %}" class="btn btn-primary mt-2">
+      <i class="fas fa-plus me-1"></i> Add First Department
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

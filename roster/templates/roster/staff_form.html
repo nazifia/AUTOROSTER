@@ -1,0 +1,155 @@
+{% extends 'roster/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header" style="background:#1B4F72;color:#fff;">
+        <i class="fas fa-user-md me-2"></i>{{ title }}
+      </div>
+      <div class="card-body p-4">
+        <form method="post" id="staffForm">
+          {% csrf_token %}
+
+          <!-- Hospital → Department → Unit cascade (hospital/dept are JS-only filters) -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Hospital <small class="text-muted">(filter)</small></label>
+              <select id="hospital-filter" class="form-select">
+                <option value="">— All Hospitals —</option>
+                {% for h in hospitals %}
+                <option value="{{ h.pk }}" {% if selected_hospital == h.pk %}selected{% endif %}>{{ h.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Department <small class="text-muted">(filter)</small></label>
+              <select id="dept-filter" class="form-select">
+                <option value="">— All Departments —</option>
+                {% for d in departments %}
+                <option value="{{ d.pk }}"
+                  data-hospital="{{ d.hospital.pk }}"
+                  {% if selected_dept == d.pk %}selected{% endif %}>
+                  {{ d.department_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Unit <span class="text-danger">*</span></label>
+              {{ form.unit }}
+              {% if form.unit.errors %}
+              <div class="text-danger small">{{ form.unit.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Staff details -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label class="form-label">Title</label>
+              {{ form.title }}
+              {% if form.title.errors %}
+              <div class="text-danger small">{{ form.title.errors }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-9">
+              <label class="form-label">Full Name <span class="text-danger">*</span></label>
+              {{ form.name }}
+              {% if form.name.errors %}
+              <div class="text-danger small">{{ form.name.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-3 form-check">
+            {{ form.is_active }}
+            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+          </div>
+
+          <button type="submit" class="btn btn-primary mt-2">
+            <i class="fas fa-save me-1"></i> Save Staff
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="mt-3">
+      <a href="{% url 'staff_list' %}" class="text-muted text-decoration-none">
+        <i class="fas fa-arrow-left me-1"></i> Back to Staff
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+const hospitalFilter = document.getElementById('hospital-filter');
+const deptFilter = document.getElementById('dept-filter');
+const unitSelect = document.getElementById('id_unit');
+
+// All dept options (to restore when hospital filter cleared)
+const allDeptOptions = Array.from(deptFilter.options).map(o => ({
+  value: o.value,
+  text: o.text,
+  hospital: o.dataset.hospital,
+}));
+
+function filterDeptsByHospital(hospitalId) {
+  const current = deptFilter.value;
+  Array.from(deptFilter.options).forEach(opt => {
+    if (!opt.value) { opt.style.display = ''; return; }
+    opt.style.display = (!hospitalId || opt.dataset.hospital === hospitalId) ? '' : 'none';
+  });
+  // If current dept no longer visible, reset it
+  const currentOpt = deptFilter.querySelector(`option[value="${current}"]`);
+  if (current && currentOpt && currentOpt.style.display === 'none') {
+    deptFilter.value = '';
+    filterUnitsByDept('');
+  }
+}
+
+function filterUnitsByDept(deptId) {
+  if (!deptId) {
+    Array.from(unitSelect.options).forEach(opt => opt.style.display = '');
+    return;
+  }
+  fetch(`/api/units/${deptId}/`)
+    .then(r => r.json())
+    .then(data => {
+      const validIds = new Set(data.units.map(u => u.id.toString()));
+      Array.from(unitSelect.options).forEach(opt => {
+        opt.style.display = (!opt.value || validIds.has(opt.value)) ? '' : 'none';
+      });
+      // Auto-select if only one unit
+      const visible = Array.from(unitSelect.options).filter(o => o.value && o.style.display !== 'none');
+      if (visible.length === 1 && !unitSelect.value) {
+        unitSelect.value = visible[0].value;
+      }
+      // If current unit not in filtered set, clear it
+      if (unitSelect.value) {
+        const sel = unitSelect.querySelector(`option[value="${unitSelect.value}"]`);
+        if (sel && sel.style.display === 'none') unitSelect.value = '';
+      }
+    });
+}
+
+hospitalFilter.addEventListener('change', function () {
+  filterDeptsByHospital(this.value);
+});
+
+deptFilter.addEventListener('change', function () {
+  filterUnitsByDept(this.value);
+});
+
+// On load: apply pre-selected hospital/dept filters
+(function init() {
+  const initHospital = hospitalFilter.value;
+  const initDept = deptFilter.value;
+  if (initHospital) filterDeptsByHospital(initHospital);
+  if (initDept) filterUnitsByDept(initDept);
+})();
+</script>
+{% endblock %}

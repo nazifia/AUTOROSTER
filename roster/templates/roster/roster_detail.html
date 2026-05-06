@@ -1,0 +1,238 @@
+{% extends 'roster/base.html' %}
+{% block title %}{{ roster }}{% endblock %}
+{% block page_title %}{{ roster.get_month_display }} {{ roster.year }} Roster{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'roster_export' roster.pk %}" class="btn btn-success btn-sm">
+    <i class="fas fa-file-excel me-1"></i> Export Excel
+  </a>
+  <a href="{% url 'roster_delete' roster.pk %}" class="btn btn-outline-danger btn-sm">
+    <i class="fas fa-trash me-1"></i> Delete
+  </a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .roster-view-table { width: 100%; border-collapse: collapse; }
+  .roster-view-table th {
+    background: #1B4F72;
+    color: #fff;
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .roster-view-table td {
+    padding: 9px 12px;
+    text-align: center;
+    font-size: .84rem;
+    border-bottom: 1px solid #e9eef3;
+    vertical-align: middle;
+  }
+  .roster-view-table tr:hover td { background: #f0f7ff; }
+  .roster-view-table .weekend td { background: #fffbeb; }
+  .roster-view-table .weekend:hover td { background: #fef3c7; }
+  .day-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: .78rem;
+  }
+  .day-weekday { background: #dbeafe; color: #1e40af; }
+  .day-weekend { background: #fde68a; color: #92400e; }
+  .staff-cell { font-weight: 500; color: #1B4F72; }
+  .empty-cell { color: #9ca3af; font-style: italic; font-size: .78rem; }
+  .edit-btn { opacity: 0; transition: opacity 0.15s; }
+  tr:hover .edit-btn { opacity: 1; }
+  .inline-edit-form { display: none; }
+  .inline-edit-form.active { display: table-row; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Roster header card -->
+<div class="card mb-4" style="border-top: 4px solid #1B4F72;">
+  <div class="card-body">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <div style="font-size:.78rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">
+          {{ roster.unit.department.hospital.name }}
+        </div>
+        <h4 style="font-weight:700;color:#1B4F72;margin-bottom:4px;">{{ roster.roster_title }}</h4>
+        <div style="font-size:.9rem;color:#374151;">
+          {{ roster.unit.department.department_name }} &mdash; {{ roster.unit.unit_name }}
+        </div>
+        <div class="mt-2">
+          <span class="badge" style="background:#e8f0f7;color:#1B4F72;font-size:.85rem;padding:6px 14px;border-radius:20px;">
+            <i class="fas fa-calendar me-1"></i>{{ roster.month_year_display }}
+          </span>
+          <span class="badge ms-2" style="background:#f0fdf4;color:#065f46;font-size:.8rem;padding:5px 12px;border-radius:20px;">
+            {{ entries.count }} days
+          </span>
+        </div>
+      </div>
+      <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{% url 'roster_export' roster.pk %}" class="btn btn-success">
+          <i class="fas fa-file-excel me-2"></i>Download Excel
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Roster table -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff;border-bottom:2px solid #e8f0f7;">
+    <span style="font-weight:600;color:#1B4F72;"><i class="fas fa-table me-2"></i>Roster Entries</span>
+    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Click <i class="fas fa-pencil-alt"></i> on any row to edit</small>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="roster-view-table">
+        <thead>
+          <tr>
+            <th style="width:60px;">Day</th>
+            <th style="width:110px;">Date</th>
+            <th>{{ roster.slot1_label }}</th>
+            {% if roster.num_slots >= 2 %}<th>{{ roster.slot2_label }}</th>{% endif %}
+            {% if roster.num_slots >= 3 %}<th>{{ roster.slot3_label }}</th>{% endif %}
+            <th style="width:50px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in entries %}
+          {% with is_weekend=entry.date.weekday|add:0 %}
+          <tr class="{% if entry.date.weekday >= 5 %}weekend{% endif %}" id="row-{{ entry.pk }}">
+            <td>
+              <span class="day-badge {% if entry.date.weekday >= 5 %}day-weekend{% else %}day-weekday{% endif %}">
+                {{ entry.day_abbr }}
+              </span>
+            </td>
+            <td style="font-weight:500;color:#374151;">{{ entry.date_display }}</td>
+            <td class="staff-cell" id="s1-{{ entry.pk }}">
+              {% if entry.slot1 %}{{ entry.slot1.display_name }}{% else %}<span class="empty-cell">—</span>{% endif %}
+            </td>
+            {% if roster.num_slots >= 2 %}
+            <td class="staff-cell" id="s2-{{ entry.pk }}">
+              {% if entry.slot2 %}{{ entry.slot2.display_name }}{% else %}<span class="empty-cell">—</span>{% endif %}
+            </td>
+            {% endif %}
+            {% if roster.num_slots >= 3 %}
+            <td class="staff-cell" id="s3-{{ entry.pk }}">
+              {% if entry.slot3 %}{{ entry.slot3.display_name }}{% else %}<span class="empty-cell">—</span>{% endif %}
+            </td>
+            {% endif %}
+            <td>
+              <button class="btn btn-sm btn-light edit-btn" onclick="openEdit({{ entry.pk }}, {{ entry.slot1.pk|default:'null' }}, {{ entry.slot2.pk|default:'null' }}, {{ entry.slot3.pk|default:'null' }})" title="Edit">
+                <i class="fas fa-pencil-alt" style="font-size:.75rem;"></i>
+              </button>
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:12px;">
+      <div class="modal-header" style="background:#1B4F72;color:#fff;border-radius:12px 12px 0 0;">
+        <h5 class="modal-title"><i class="fas fa-pencil-alt me-2"></i>Edit Entry</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label">{{ roster.slot1_label }}</label>
+          <select class="form-select" id="edit_slot1">
+            <option value="">— None —</option>
+            {% for s in all_staff %}
+            <option value="{{ s.pk }}">{{ s.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if roster.num_slots >= 2 %}
+        <div class="mb-3">
+          <label class="form-label">{{ roster.slot2_label }}</label>
+          <select class="form-select" id="edit_slot2">
+            <option value="">— None —</option>
+            {% for s in all_staff %}
+            <option value="{{ s.pk }}">{{ s.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% if roster.num_slots >= 3 %}
+        <div class="mb-3">
+          <label class="form-label">{{ roster.slot3_label }}</label>
+          <select class="form-select" id="edit_slot3">
+            <option value="">— None —</option>
+            {% for s in all_staff %}
+            <option value="{{ s.pk }}">{{ s.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveEditBtn">
+          <i class="fas fa-save me-1"></i>Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let currentEntryId = null;
+  const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+  function openEdit(entryId, s1, s2, s3) {
+    currentEntryId = entryId;
+    setVal('edit_slot1', s1);
+    setVal('edit_slot2', s2);
+    setVal('edit_slot3', s3);
+    editModal.show();
+  }
+
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val || '';
+  }
+
+  document.getElementById('saveEditBtn').addEventListener('click', () => {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    const s1 = document.getElementById('edit_slot1')?.value;
+    const s2 = document.getElementById('edit_slot2')?.value;
+    const s3 = document.getElementById('edit_slot3')?.value;
+    if (s1) fd.append('slot1', s1);
+    if (s2) fd.append('slot2', s2);
+    if (s3) fd.append('slot3', s3);
+
+    fetch(`/entries/${currentEntryId}/update/`, { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        updateCell(`s1-${currentEntryId}`, data.slot1);
+        updateCell(`s2-${currentEntryId}`, data.slot2);
+        updateCell(`s3-${currentEntryId}`, data.slot3);
+        editModal.hide();
+      });
+  });
+
+  function updateCell(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = val || '<span class="empty-cell">—</span>';
+  }
+</script>
+{% endblock %}

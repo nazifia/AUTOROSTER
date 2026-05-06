@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m venv venv)",
+      "Bash(venv/Scripts/pip install *)",
+      "Bash(venv/Scripts/django-admin startproject *)",
+      "Bash(venv/Scripts/python manage.py startapp roster)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)",
+      "Bash(python manage.py migrate)",
+      "Bash(pip install *)",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(python -m pip install openpyxl)",
+      "Bash(python manage.py check)",
+      "PowerShell(dir \"C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER\\\\roster\" -Recurse | Where-Object {!$_.PSIsContainer} | Select-Object FullName)",
+      "PowerShell(dir \"C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER\\\\accounts\" -Recurse | Where-Object {!$_.PSIsContainer} | Select-Object FullName)",
+      "PowerShell(dir \"C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER\\\\autoroster\" -Recurse | Where-Object {!$_.PSIsContainer} | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Recurse -File | Select-Object FullName | Where-Object { $_.FullName -notmatch \"venv\" } | Format-List)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(Get-ChildItem C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER -Force | Where-Object { $_.Name -ne 'venv' } | Select-Object Name, PSIsContainer)",
+      "Bash(python manage.py makemigrations roster --name staff_availability)"
+    ]
+  }
+}

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AutoRoster{% endblock %} | FTH Katsina</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-width: 260px;
+      --primary: #1B4F72;
+      --primary-dark: #154360;
+      --accent: #2E86C1;
+      --sidebar-bg: #0d2137;
+      --sidebar-text: #ccd6e0;
+      --sidebar-hover: rgba(46,134,193,0.18);
+      --sidebar-active: rgba(46,134,193,0.32);
+    }
+    * { font-family: 'Inter', sans-serif; }
+    body { background: #f0f4f8; min-height: 100vh; }
+
+    /* Sidebar */
+    #sidebar {
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+    }
+    .sidebar-brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-brand h5 {
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin: 0;
+      line-height: 1.3;
+    }
+    .sidebar-brand small { color: var(--sidebar-text); font-size: 0.72rem; }
+    .sidebar-logo {
+      width: 38px; height: 38px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-right: 10px; flex-shrink: 0;
+    }
+    .sidebar-nav { padding: 12px 0; flex: 1; overflow-y: auto; }
+    .nav-section-label {
+      color: rgba(255,255,255,0.35);
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 10px 20px 4px;
+    }
+    .sidebar-nav .nav-link {
+      color: var(--sidebar-text);
+      padding: 9px 20px;
+      border-radius: 0;
+      font-size: 0.875rem;
+      display: flex; align-items: center; gap: 10px;
+      transition: all 0.18s;
+    }
+    .sidebar-nav .nav-link:hover { background: var(--sidebar-hover); color: #fff; }
+    .sidebar-nav .nav-link.active { background: var(--sidebar-active); color: #fff; border-left: 3px solid var(--accent); }
+    .sidebar-nav .nav-link i { width: 18px; text-align: center; font-size: 0.9rem; }
+    .sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 0.72rem; }
+
+    /* Main content */
+    #main-content {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 500;
+    }
+    .topbar-title { font-weight: 600; color: #1a202c; font-size: 1.05rem; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+    .page-content { padding: 28px; flex: 1; }
+
+    /* Cards */
+    .card { border: none; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .card-header { border-radius: 12px 12px 0 0 !important; font-weight: 600; }
+
+    /* Stats cards */
+    .stat-card {
+      border-radius: 12px;
+      padding: 22px 24px;
+      color: #fff;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .stat-card .stat-icon {
+      width: 52px; height: 52px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-card .stat-label { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
+
+    /* Tables */
+    .table-modern { border-collapse: separate; border-spacing: 0; }
+    .table-modern thead th {
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 14px;
+      border: none;
+    }
+    .table-modern thead th:first-child { border-radius: 8px 0 0 0; }
+    .table-modern thead th:last-child { border-radius: 0 8px 0 0; }
+    .table-modern tbody tr:hover { background: #f0f7ff !important; }
+    .table-modern tbody td { padding: 11px 14px; vertical-align: middle; border-color: #edf2f7; font-size: 0.875rem; }
+
+    /* Roster table */
+    .roster-table thead th {
+      background: var(--primary-dark);
+      color: #fff;
+      text-align: center;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      padding: 10px;
+    }
+    .roster-table tbody td { text-align: center; font-size: 0.82rem; padding: 8px 10px; }
+    .roster-table .weekend-row { background: #fffbeb; }
+    .roster-table .day-cell { font-weight: 700; color: var(--primary); }
+
+    /* Badges */
+    .badge-active { background: #d1fae5; color: #065f46; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
+
+    /* Alerts */
+    .alert { border-radius: 10px; border: none; }
+
+    /* Buttons */
+    .btn { border-radius: 8px; font-size: 0.875rem; font-weight: 500; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .btn-success { background: #059669; border-color: #059669; }
+    .btn-success:hover { background: #047857; border-color: #047857; }
+
+    /* Form */
+    .form-label { font-weight: 500; font-size: 0.875rem; color: #374151; }
+    .form-control, .form-select { border-radius: 8px; font-size: 0.875rem; border-color: #d1d5db; }
+    .form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,134,193,0.15); }
+
+    /* Section card */
+    .section-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .section-card h6 {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e8f0f7;
+    }
+
+    /* Sidebar toggle — unified for all screen sizes */
+    #sidebar { transition: transform 0.3s ease; }
+    #main-content { transition: margin-left 0.3s ease; }
+
+    body.sidebar-collapsed #sidebar { transform: translateX(-100%); }
+    body.sidebar-collapsed #main-content { margin-left: 0; }
+
+    /* Mobile overlay */
+    #sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 999;
+    }
+    body:not(.sidebar-collapsed) #sidebar-overlay.active { display: block; }
+
+    @media (max-width: 768px) {
+      #main-content { margin-left: 0; }
+      body:not(.sidebar-collapsed) #sidebar-overlay { display: block; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sidebar-brand d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center">
+      <div class="sidebar-logo">
+        <i class="fas fa-calendar-alt text-white"></i>
+      </div>
+      <div>
+        <h5>AutoRoster</h5>
+        <small>FTH Katsina</small>
+      </div>
+    </div>
+    <button id="sidebarClose" class="btn btn-sm p-1 ms-2" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);line-height:1;" title="Collapse sidebar">
+      <i class="fas fa-chevron-left" style="font-size:0.75rem;"></i>
+    </button>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <i class="fas fa-chart-pie"></i> Dashboard
+    </a>
+
+    <div class="nav-section-label mt-2">Management</div>
+    <a href="{% url 'hospital_list' %}" class="nav-link {% if 'hospital' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="fas fa-hospital-alt"></i> Hospitals
+    </a>
+    <a href="{% url 'department_list' %}" class="nav-link {% if 'department' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="fas fa-hospital"></i> Departments
+    </a>
+    <a href="{% url 'unit_list' %}" class="nav-link {% if 'unit' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="fas fa-layer-group"></i> Units
+    </a>
+    <a href="{% url 'staff_list' %}" class="nav-link {% if 'staff' in request.resolver_match.url_name and 'api' not in request.resolver_match.url_name %}active{% endif %}">
+      <i class="fas fa-user-md"></i> Staff
+    </a>
+
+    <div class="nav-section-label mt-2">Roster</div>
+    <a href="{% url 'roster_generate' %}" class="nav-link {% if request.resolver_match.url_name == 'roster_generate' %}active{% endif %}">
+      <i class="fas fa-magic"></i> Generate Roster
+    </a>
+    <a href="{% url 'roster_list' %}" class="nav-link {% if request.resolver_match.url_name == 'roster_list' %}active{% endif %}">
+      <i class="fas fa-list-alt"></i> All Rosters
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <div style="color:#fff;font-size:.8rem;font-weight:600;">{{ request.user }}</div>
+        <small style="color:rgba(255,255,255,0.4);">{{ request.user.phone_number }}</small>
+      </div>
+      <a href="{% url 'logout' %}" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay"></div>
+
+<!-- Main Content -->
+<div id="main-content">
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-sm btn-light" id="sidebarToggle" title="Toggle sidebar">
+        <i class="fas fa-bars"></i>
+      </button>
+      <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
+    </div>
+    <div class="topbar-actions">
+      {% block topbar_actions %}{% endblock %}
+    </div>
+  </div>
+
+  <div class="page-content">
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+          <i class="fas fa-{% if msg.tags == 'success' %}check-circle{% elif msg.tags == 'error' or msg.tags == 'danger' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function () {
+    const STORAGE_KEY = 'ar_sidebar_collapsed';
+    const body = document.body;
+    const overlay = document.getElementById('sidebar-overlay');
+
+    function isMobile() { return window.innerWidth <= 768; }
+
+    function applyState(collapsed) {
+      body.classList.toggle('sidebar-collapsed', collapsed);
+      if (overlay) overlay.classList.toggle('active', !collapsed && isMobile());
+    }
+
+    function toggle() {
+      const collapsed = !body.classList.contains('sidebar-collapsed');
+      applyState(collapsed);
+      try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch(e) {}
+    }
+
+    // Init: mobile defaults to collapsed; desktop restores preference
+    const stored = (() => { try { return localStorage.getItem(STORAGE_KEY); } catch(e) { return null; } })();
+    if (stored !== null) {
+      applyState(stored === '1');
+    } else {
+      applyState(isMobile());
+    }
+
+    document.getElementById('sidebarToggle')?.addEventListener('click', toggle);
+    document.getElementById('sidebarClose')?.addEventListener('click', toggle);
+    overlay?.addEventListener('click', toggle);
+  })();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,318 @@
+{% extends 'roster/base.html' %}
+{% block title %}Generate Roster{% endblock %}
+{% block page_title %}Generate Roster{% endblock %}
+
+{% block extra_head %}
+<style>
+  .slot-section { display: none; }
+  .slot-section.visible { display: block; }
+  .staff-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+  .staff-checkbox-grid label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: .83rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s;
+  }
+  .staff-checkbox-grid label:hover { border-color: #2E86C1; background: #e8f4fd; }
+  .staff-checkbox-grid input:checked + span { color: #1B4F72; font-weight: 600; }
+  .staff-checkbox-grid label:has(input:checked) { border-color: #2E86C1; background: #dbeafe; }
+  .mode-radio label { cursor: pointer; }
+  .staff-hint {
+    font-size: .78rem;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .unit-filter-note {
+    font-size: .8rem;
+    color: #2E86C1;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 6px 10px;
+    display: none;
+  }
+  .unit-filter-note.visible { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9">
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" id="generateForm">
+      {% csrf_token %}
+
+      <!-- Step 1: Department & Unit selection -->
+      <div class="section-card">
+        <h6><i class="fas fa-info-circle me-2"></i>Roster Details</h6>
+        <div class="row g-3">
+
+          <!-- Department filter (JS only, not submitted) -->
+          <div class="col-md-6">
+            <label class="form-label">Department <small class="text-muted">(filter units)</small></label>
+            <select id="dept-filter" class="form-select">
+              <option value="">— All Departments —</option>
+              {% for dept in departments %}
+              <option value="{{ dept.pk }}">{{ dept.hospital.name }} / {{ dept.department_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Unit (actual form field) -->
+          <div class="col-md-6">
+            <label class="form-label">Unit <span class="text-danger">*</span></label>
+            {{ form.unit }}
+            {% if form.unit.errors %}<div class="text-danger small">{{ form.unit.errors }}</div>{% endif %}
+            <div class="unit-filter-note mt-1" id="unit-staff-note">
+              <i class="fas fa-filter me-1"></i>Staff checkboxes below filtered to this unit.
+              <a href="#" id="show-all-staff" class="ms-1">Show all</a>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Roster Title</label>
+            {{ form.roster_title }}
+            {% if form.roster_title.errors %}<div class="text-danger small">{{ form.roster_title.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Month</label>
+            {{ form.month }}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Year</label>
+            {{ form.year }}
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Slots</label>
+            {{ form.num_slots }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot Labels -->
+      <div class="section-card">
+        <h6><i class="fas fa-tag me-2"></i>Slot Labels</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Slot 1 Label</label>
+            {{ form.slot1_label }}
+          </div>
+          <div class="col-md-4 slot-section slot2-section">
+            <label class="form-label">Slot 2 Label</label>
+            {{ form.slot2_label }}
+          </div>
+          <div class="col-md-4 slot-section slot3-section">
+            <label class="form-label">Slot 3 Label</label>
+            {{ form.slot3_label }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot 1 -->
+      <div class="section-card">
+        <h6><i class="fas fa-user-circle me-2" style="color:#1B4F72;"></i>Slot 1 — <span id="slot1_label_display">FIRST ON CALL</span></h6>
+        <div class="mb-3">
+          <label class="form-label">Staff Pool <small class="text-muted">(select staff to include in this slot)</small></label>
+          <p class="staff-hint">Select a unit above to highlight that unit's staff.</p>
+          <div class="staff-checkbox-grid" id="slot1-staff-grid">
+            {% for choice in form.slot1_staff %}
+            <label data-staff-id="{{ choice.data.value }}">
+              {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% if form.slot1_staff.errors %}<div class="text-danger small mt-1">{{ form.slot1_staff.errors }}</div>{% endif %}
+        </div>
+        <div class="mode-radio">
+          <label class="form-label">Assignment Mode</label>
+          <div class="d-flex gap-4">
+            {% for choice in form.slot1_mode %}
+            <div class="form-check">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot 2 -->
+      <div class="section-card slot-section slot2-section" id="slot2-card">
+        <h6><i class="fas fa-user-circle me-2" style="color:#2E86C1;"></i>Slot 2 — <span id="slot2_label_display">SECOND ON CALL</span></h6>
+        <div class="mb-3">
+          <label class="form-label">Staff Pool</label>
+          <div class="staff-checkbox-grid" id="slot2-staff-grid">
+            {% for choice in form.slot2_staff %}
+            <label data-staff-id="{{ choice.data.value }}">
+              {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% if form.slot2_staff.errors %}<div class="text-danger small mt-1">{{ form.slot2_staff.errors }}</div>{% endif %}
+        </div>
+        <div class="mode-radio">
+          <label class="form-label">Assignment Mode</label>
+          <div class="d-flex gap-4">
+            {% for choice in form.slot2_mode %}
+            <div class="form-check">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot 3 -->
+      <div class="section-card slot-section slot3-section" id="slot3-card">
+        <h6><i class="fas fa-user-circle me-2" style="color:#7d3c98;"></i>Slot 3 — <span id="slot3_label_display">THIRD ON CALL</span></h6>
+        <div class="mb-3">
+          <label class="form-label">Staff Pool</label>
+          <div class="staff-checkbox-grid" id="slot3-staff-grid">
+            {% for choice in form.slot3_staff %}
+            <label data-staff-id="{{ choice.data.value }}">
+              {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% if form.slot3_staff.errors %}<div class="text-danger small mt-1">{{ form.slot3_staff.errors }}</div>{% endif %}
+        </div>
+        <div class="mode-radio">
+          <label class="form-label">Assignment Mode</label>
+          <div class="d-flex gap-4">
+            {% for choice in form.slot3_mode %}
+            <div class="form-check">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-3">
+        <button type="submit" class="btn btn-primary px-5">
+          <i class="fas fa-magic me-2"></i>Generate Roster
+        </button>
+        <a href="{% url 'roster_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const numSlotsSelect = document.getElementById('id_num_slots');
+  const slot1LabelInput = document.getElementById('id_slot1_label');
+  const slot2LabelInput = document.getElementById('id_slot2_label');
+  const slot3LabelInput = document.getElementById('id_slot3_label');
+  const unitSelect = document.getElementById('id_unit');
+  const deptFilter = document.getElementById('dept-filter');
+  const unitNote = document.getElementById('unit-staff-note');
+
+  function updateSlotVisibility() {
+    const n = parseInt(numSlotsSelect.value);
+    document.querySelectorAll('.slot2-section').forEach(el => el.classList.toggle('visible', n >= 2));
+    document.querySelectorAll('.slot3-section').forEach(el => el.classList.toggle('visible', n >= 3));
+  }
+
+  function updateLabels() {
+    document.getElementById('slot1_label_display').textContent = slot1LabelInput.value || 'FIRST ON CALL';
+    document.getElementById('slot2_label_display').textContent = slot2LabelInput.value || 'SECOND ON CALL';
+    document.getElementById('slot3_label_display').textContent = slot3LabelInput.value || 'THIRD ON CALL';
+  }
+
+  // Filter unit dropdown by selected department
+  deptFilter.addEventListener('change', function () {
+    const deptId = this.value;
+    if (!deptId) {
+      // Restore all unit options
+      Array.from(unitSelect.options).forEach(opt => opt.style.display = '');
+      return;
+    }
+    fetch(`/api/units/${deptId}/`)
+      .then(r => r.json())
+      .then(data => {
+        const validIds = new Set(data.units.map(u => u.id.toString()));
+        Array.from(unitSelect.options).forEach(opt => {
+          opt.style.display = (!opt.value || validIds.has(opt.value)) ? '' : 'none';
+        });
+        // Auto-select if only one unit in dept
+        const visible = Array.from(unitSelect.options).filter(o => o.value && o.style.display !== 'none');
+        if (visible.length === 1) {
+          unitSelect.value = visible[0].value;
+          filterStaffByUnit(visible[0].value);
+        }
+      });
+  });
+
+  // Filter staff checkboxes when unit selected
+  unitSelect.addEventListener('change', function () {
+    const unitId = this.value;
+    if (!unitId) {
+      showAllStaff();
+      unitNote.classList.remove('visible');
+      return;
+    }
+    filterStaffByUnit(unitId);
+  });
+
+  function filterStaffByUnit(unitId) {
+    fetch(`/api/staff-unit/${unitId}/`)
+      .then(r => r.json())
+      .then(data => {
+        const staffIds = new Set(data.staff.map(s => s.id.toString()));
+        document.querySelectorAll('.staff-checkbox-grid label').forEach(label => {
+          const sid = label.getAttribute('data-staff-id');
+          label.style.display = staffIds.has(sid) ? '' : 'none';
+        });
+        unitNote.classList.add('visible');
+      });
+  }
+
+  function showAllStaff() {
+    document.querySelectorAll('.staff-checkbox-grid label').forEach(label => {
+      label.style.display = '';
+    });
+    unitNote.classList.remove('visible');
+  }
+
+  document.getElementById('show-all-staff').addEventListener('click', function (e) {
+    e.preventDefault();
+    showAllStaff();
+  });
+
+  numSlotsSelect.addEventListener('change', updateSlotVisibility);
+  slot1LabelInput.addEventListener('input', updateLabels);
+  slot2LabelInput.addEventListener('input', updateLabels);
+  slot3LabelInput.addEventListener('input', updateLabels);
+
+  updateSlotVisibility();
+  updateLabels();
+
+  // If unit already selected (form re-render after error), filter staff
+  if (unitSelect.value) {
+    filterStaffByUnit(unitSelect.value);
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'roster/base.html' %}
+{% block title %}Delete {{ obj_type }}{% endblock %}
+{% block page_title %}Delete {{ obj_type }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card" style="border-top:4px solid #dc2626;">
+      <div class="card-body text-center p-5">
+        <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+          <i class="fas fa-trash-alt fa-2x" style="color:#dc2626;"></i>
+        </div>
+        <h5 style="font-weight:700;color:#1a202c;">Delete {{ obj_type }}?</h5>
+        <p class="text-muted mb-4">
+          You are about to delete <strong>{{ obj }}</strong>.<br>
+          This action cannot be undone.
+        </p>
+        <form method="post" class="d-flex gap-3 justify-content-center">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="fas fa-trash me-1"></i> Yes, Delete
+          </button>
+          <a href="javascript:history.back()" class="btn btn-outline-secondary px-4">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends 'roster/base.html' %}
+{% block title %}Rosters{% endblock %}
+{% block page_title %}All Rosters{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{% url 'roster_generate' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-magic me-1"></i> Generate Roster
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-modern mb-0">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Unit</th>
+          <th>Period</th>
+          <th>Slots</th>
+          <th>Entries</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rosters %}
+        <tr>
+          <td style="font-weight:600;font-size:.875rem;">{{ r.roster_title }}</td>
+          <td style="font-size:.82rem;">{{ r.unit.unit_name|truncatechars:35 }}</td>
+          <td>
+            <span class="badge" style="background:#e8f0f7;color:#1B4F72;font-weight:600;font-size:.8rem;padding:5px 10px;border-radius:20px;">
+              {{ r.get_month_display }} {{ r.year }}
+            </span>
+          </td>
+          <td style="font-size:.875rem;">{{ r.num_slots }}</td>
+          <td style="font-size:.875rem;">{{ r.entries.count }}</td>
+          <td style="font-size:.82rem;color:#6b7280;">{{ r.created_at|date:"M d, Y" }}</td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'roster_detail' r.pk %}" class="btn btn-sm btn-outline-primary" title="View">
+                <i class="fas fa-eye"></i>
+              </a>
+              <a href="{% url 'roster_export' r.pk %}" class="btn btn-sm btn-success" title="Export Excel">
+                <i class="fas fa-file-excel"></i>
+              </a>
+              <a href="{% url 'roster_delete' r.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                <i class="fas fa-trash"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5 text-muted">
+            <i class="fas fa-calendar-times fa-3x mb-3 opacity-25 d-block"></i>
+            No rosters yet. <a href="{% url 'roster_generate' %}">Generate one</a>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
