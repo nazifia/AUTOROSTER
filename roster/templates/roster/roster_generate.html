@@ -316,6 +316,15 @@
               </label>
             </div>
           </div>
+          <div class="col-md-6">
+            <div class="min-gap-row mt-2">
+              <label for="{{ form.ptech_cm_min_gap.id_for_label }}" class="text-muted" style="font-size:.82rem;">
+                <i class="fas fa-calendar-minus me-1"></i>{{ form.ptech_cm_min_gap.label }}:
+              </label>
+              {{ form.ptech_cm_min_gap }}
+            </div>
+            {% if form.ptech_cm_min_gap.errors %}<div class="text-danger small mt-1">{{ form.ptech_cm_min_gap.errors }}</div>{% endif %}
+          </div>
         </div>
 
         <div class="row g-3">
@@ -394,10 +403,15 @@
   // Identify call-only slot cards (Slot 1, 2, 3)
   const callSlotCards = document.querySelectorAll('#slot1-card, #slot2-card, #slot3-card, .section-card:has(#slot1-staff-grid)');
 
+  const pageTitleSpan = document.querySelector('.topbar-title');
+
   function updateRosterType() {
     const selected = document.querySelector('[name="roster_type"]:checked');
     if (!selected) return;
     const isPTech = selected.value === 'PTECH';
+    const titleText = isPTech ? 'PTECH' : 'Generate Roster';
+    if (pageTitleSpan) pageTitleSpan.textContent = titleText;
+    document.title = titleText;
     // PTech: show ptech section, hide call-specific sections
     ptechSection.style.display = isPTech ? '' : 'none';
     numSlotsWrapper.style.display = isPTech ? 'none' : '';

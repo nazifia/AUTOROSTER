@@ -294,6 +294,26 @@
   </div>
 </div>
 
+<!-- Auto-logout warning modal -->
+<div class="modal fade" id="idleWarningModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-warning text-dark border-0">
+        <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Session Expiring Soon</h5>
+      </div>
+      <div class="modal-body text-center py-4">
+        <p class="mb-1">You've been inactive. Session expires in</p>
+        <h2 class="fw-bold text-danger" id="idleCountdown">60</h2>
+        <p class="text-muted small">seconds. Click below to stay logged in.</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center gap-2">
+        <button class="btn btn-primary px-4" id="idleStayBtn">Stay Logged In</button>
+        <a href="{% url 'logout' %}" class="btn btn-outline-secondary px-4">Logout Now</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   (function () {
@@ -325,6 +345,63 @@
     document.getElementById('sidebarToggle')?.addEventListener('click', toggle);
     document.getElementById('sidebarClose')?.addEventListener('click', toggle);
     overlay?.addEventListener('click', toggle);
+  })();
+</script>
+<script>
+  (function () {
+    const IDLE_LIMIT = 30 * 60 * 1000;   // 30 min
+    const WARN_BEFORE = 60 * 1000;        // warn 60s before logout
+    const LOGOUT_URL = "{% url 'logout' %}";
+
+    let lastActivity = Date.now();
+    let warningModal = null;
+    let countdownInterval = null;
+    let checkInterval = null;
+
+    function resetActivity() {
+      lastActivity = Date.now();
+      if (warningModal && warningModal._isShown) {
+        warningModal.hide();
+        clearInterval(countdownInterval);
+      }
+    }
+
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function (ev) {
+      document.addEventListener(ev, resetActivity, { passive: true });
+    });
+
+    document.getElementById('idleStayBtn')?.addEventListener('click', function () {
+      resetActivity();
+      fetch(window.location.href, { method: 'HEAD', credentials: 'same-origin' });
+    });
+
+    warningModal = new bootstrap.Modal(document.getElementById('idleWarningModal'));
+
+    checkInterval = setInterval(function () {
+      const idle = Date.now() - lastActivity;
+      const remaining = IDLE_LIMIT - idle;
+
+      if (remaining <= 0) {
+        clearInterval(checkInterval);
+        window.location.href = LOGOUT_URL;
+      } else if (remaining <= WARN_BEFORE) {
+        if (!document.getElementById('idleWarningModal').classList.contains('show')) {
+          warningModal.show();
+          let secs = Math.ceil(remaining / 1000);
+          document.getElementById('idleCountdown').textContent = secs;
+          clearInterval(countdownInterval);
+          countdownInterval = setInterval(function () {
+            secs -= 1;
+            const el = document.getElementById('idleCountdown');
+            if (el) el.textContent = Math.max(secs, 0);
+            if (secs <= 0) {
+              clearInterval(countdownInterval);
+              window.location.href = LOGOUT_URL;
+            }
+          }, 1000);
+        }
+      }
+    }, 5000);
   })();
 </script>
 {% block extra_js %}{% endblock %}

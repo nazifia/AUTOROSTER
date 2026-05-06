@@ -48,6 +48,17 @@
             </div>
           </div>
 
+          <!-- Staff type -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Staff Type <span class="text-danger">*</span></label>
+              {{ form.staff_type }}
+              {% if form.staff_type.errors %}
+              <div class="text-danger small">{{ form.staff_type.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+
           <!-- Staff details -->
           <div class="row g-3 mb-3">
             <div class="col-md-3">
@@ -151,5 +162,24 @@ deptFilter.addEventListener('change', function () {
   if (initHospital) filterDeptsByHospital(initHospital);
   if (initDept) filterUnitsByDept(initDept);
 })();
+
+// Auto-set title based on staff type
+const staffTypeSelect = document.getElementById('id_staff_type');
+const titleInput = document.getElementById('id_title');
+
+function syncTitle(staffType) {
+  if (staffType === 'PTECH' && titleInput.value === 'PHARM.') {
+    titleInput.value = 'PTECH.';
+  } else if (staffType === 'PHARM' && titleInput.value === 'PTECH.') {
+    titleInput.value = 'PHARM.';
+  }
+}
+
+staffTypeSelect.addEventListener('change', function () {
+  syncTitle(this.value);
+});
+
+// On load: sync title if staff type is already PTECH
+syncTitle(staffTypeSelect.value);
 </script>
 {% endblock %}

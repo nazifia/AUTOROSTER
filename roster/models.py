@@ -36,8 +36,15 @@ class Unit(models.Model):
         ordering = ['department__department_name', 'unit_name']
 
 
+STAFF_TYPE_CHOICES = [
+    ('PHARM', 'Pharmacist'),
+    ('PTECH', 'Pharmacy Technician'),
+]
+
+
 class Staff(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='staff', db_index=True)
+    staff_type = models.CharField(max_length=10, choices=STAFF_TYPE_CHOICES, default='PHARM', db_index=True)
     title = models.CharField(max_length=50, default='PHARM.')
     name = models.CharField(max_length=200, help_text='Full name e.g. IBRAHIM ABUKUR')
     is_active = models.BooleanField(default=True, db_index=True)
@@ -54,6 +61,7 @@ class Staff(models.Model):
         verbose_name_plural = 'Staff'
         indexes = [
             models.Index(fields=['unit', 'is_active']),
+            models.Index(fields=['unit', 'staff_type', 'is_active']),
         ]
 
 
@@ -85,6 +93,7 @@ ROSTER_TYPE_CHOICES = [
 PTECH_SHIFT_CHOICES = [
     ('M', 'Morning'),
     ('A', 'Afternoon'),
+    ('N', 'Night'),
     ('O', 'Off'),
     ('CM', 'Combined Morning'),
     ('L', 'Leave'),

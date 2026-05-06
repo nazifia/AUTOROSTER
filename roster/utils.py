@@ -136,7 +136,7 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
 
 
 def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_staff,
-                                   post_cm_rest=True, rotate_shifts=True):
+                                   post_cm_rest=True, rotate_shifts=True, cm_min_gap=0):
     """
     Generate PtechStaffEntry records (staff×day matrix) for a PTech roster.
 
@@ -145,6 +145,7 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
     cm_staff       – ordered list of staff who rotate CM duty on weekends
     post_cm_rest   – give Mon+Tue off after each CM weekend
     rotate_shifts  – alternate M/A each week; if False, shift is fixed for month
+    cm_min_gap     – minimum days between CM assignments for the same staff
     """
     PtechStaffEntry.objects.filter(roster=roster).delete()
 
@@ -179,22 +180,42 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
             sun = next_d if (next_d and next_d.weekday() == 6) else None
             weekends.append((cur, sun))
 
-    # Assign CM staff round-robin to each weekend
+    # Assign CM staff to each weekend — respects availability and min_gap (like Pharm's _pick)
     cm_pool = list(cm_staff)
     cm_date_staff = {}  # date → staff obj
-    for idx, (sat, sun) in enumerate(weekends):
+    last_cm_date = {}   # staff_id → last date assigned CM
+    cm_idx = 0
+    assigned_cm_per_weekend = {}  # (sat, sun) → staff obj (for post_cm_map below)
+
+    for sat, sun in weekends:
         if not cm_pool:
             break
-        cm = cm_pool[idx % len(cm_pool)]
-        cm_date_staff[sat] = cm
+        sat_unavail = unavailability.get(sat, set())
+        chosen = None
+        for offset in range(len(cm_pool)):
+            candidate = cm_pool[(cm_idx + offset) % len(cm_pool)]
+            if candidate.id in sat_unavail:
+                continue
+            if cm_min_gap > 0 and candidate.id in last_cm_date:
+                if (sat - last_cm_date[candidate.id]).days < cm_min_gap:
+                    continue
+            chosen = candidate
+            cm_idx = (cm_idx + offset + 1) % len(cm_pool)
+            break
+        if chosen is None:
+            # Fallback: ignore constraints rather than leave weekend unassigned
+            chosen = cm_pool[cm_idx % len(cm_pool)]
+            cm_idx = (cm_idx + 1) % len(cm_pool)
+        last_cm_date[chosen.id] = sat
+        cm_date_staff[sat] = chosen
         if sun:
-            cm_date_staff[sun] = cm
+            cm_date_staff[sun] = chosen
+        assigned_cm_per_weekend[(sat, sun)] = chosen
 
     # Build post-CM rest dates: Mon + Tue after each CM weekend
     post_cm_map = {}  # staff_id → set of dates
     if post_cm_rest and cm_pool:
-        for idx, (sat, sun) in enumerate(weekends):
-            cm = cm_pool[idx % len(cm_pool)]
+        for (sat, sun), cm in assigned_cm_per_weekend.items():
             base = sun or sat
             for offset in (1, 2):
                 rest = base + timedelta(days=offset)
@@ -214,9 +235,9 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
             week_idx = 1 + (cur - first_monday).days // 7
 
         for staff in all_staff:
-            if is_weekend:
-                cm_this = cm_date_staff.get(cur)
-                shift = 'CM' if (cm_this and cm_this.id == staff.id) else 'O'
+            cm_this = cm_date_staff.get(cur)
+            if cm_this and cm_this.id == staff.id:
+                shift = 'N'
             elif staff.id in unavail:
                 shift = 'L'
             elif staff.id in post_cm_map and cur in post_cm_map[staff.id]:
@@ -270,11 +291,12 @@ def export_ptech_to_excel(roster):
     weekend_fill = PatternFill('solid', fgColor='FEF9E7')
     m_fill = PatternFill('solid', fgColor='D6EAF8')
     a_fill = PatternFill('solid', fgColor='D5F5E3')
+    n_fill = PatternFill('solid', fgColor='D7BDE2')
     cm_fill = PatternFill('solid', fgColor='FDEBD0')
     l_fill = PatternFill('solid', fgColor='FADBD8')
     o_fill = PatternFill('solid', fgColor='F2F3F4')
 
-    shift_fills = {'M': m_fill, 'A': a_fill, 'CM': cm_fill, 'L': l_fill, 'O': o_fill}
+    shift_fills = {'M': m_fill, 'A': a_fill, 'N': n_fill, 'CM': cm_fill, 'L': l_fill, 'O': o_fill}
 
     # Split into two halves (days 1-16 and 17-end) like the reference
     halves = [all_dates[:16], all_dates[16:]]

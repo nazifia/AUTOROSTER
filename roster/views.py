@@ -343,7 +343,8 @@ def roster_list(request):
 @login_required
 def roster_detail(request, pk):
     roster = get_object_or_404(Roster, pk=pk)
-    all_staff = Staff.objects.filter(unit=roster.unit, is_active=True)
+    staff_type_filter = 'PTECH' if roster.roster_type == 'PTECH' else 'PHARM'
+    all_staff = Staff.objects.filter(unit=roster.unit, is_active=True, staff_type=staff_type_filter)
 
     if roster.roster_type == 'PTECH':
         _, num_days = calendar.monthrange(roster.year, roster.month)
@@ -428,6 +429,7 @@ def roster_generate(request):
                 cm_staff=cd.get('ptech_cm_staff') or [],
                 post_cm_rest=bool(cd.get('ptech_post_cm_rest')),
                 rotate_shifts=bool(cd.get('ptech_rotate_shifts')),
+                cm_min_gap=int(cd.get('ptech_cm_min_gap') or 0),
             )
         else:
             generate_roster_entries(

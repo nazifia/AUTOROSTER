@@ -128,6 +128,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# ── Session / Auto-logout ───────────────────────────────────────────────────
+SESSION_COOKIE_AGE = 1800          # 30 minutes
+SESSION_SAVE_EVERY_REQUEST = True  # reset expiry on each request
+
 # ── Caching ────────────────────────────────────────────────────────────────
 CACHES = {
     'default': {

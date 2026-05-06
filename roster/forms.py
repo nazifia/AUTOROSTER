@@ -3,7 +3,8 @@ from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, HTML, Div, Field
 from .models import (Department, Hospital, Staff, Roster, Unit, StaffAvailability,
-                      ROSTER_TYPE_CHOICES, PTECH_SHIFT_CONFIG_CHOICES, SHIFT_CONFIG_DETAILS)
+                      ROSTER_TYPE_CHOICES, PTECH_SHIFT_CONFIG_CHOICES, SHIFT_CONFIG_DETAILS,
+                      STAFF_TYPE_CHOICES)
 
 CURRENT_YEAR = 2026
 
@@ -74,9 +75,10 @@ class UnitForm(forms.ModelForm):
 class StaffForm(forms.ModelForm):
     class Meta:
         model = Staff
-        fields = ['unit', 'title', 'name', 'is_active']
+        fields = ['unit', 'staff_type', 'title', 'name', 'is_active']
         widgets = {
             'unit': forms.Select(attrs={'class': 'form-select'}),
+            'staff_type': forms.Select(attrs={'class': 'form-select'}),
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. PHARM.'}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. IBRAHIM ABUKUR'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -91,9 +93,10 @@ class StaffForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Row(
-                Column('unit', css_class='col-md-6'),
+                Column('unit', css_class='col-md-4'),
+                Column('staff_type', css_class='col-md-3'),
                 Column('title', css_class='col-md-2'),
-                Column('name', css_class='col-md-4'),
+                Column('name', css_class='col-md-3'),
             ),
             Field('is_active'),
             Submit('submit', 'Save Staff', css_class='btn btn-primary mt-3'),
@@ -167,7 +170,7 @@ class RosterGenerateForm(forms.Form):
         label='Slot 3 Label',
     )
     slot1_staff = forms.ModelMultipleChoiceField(
-        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
         label='Slot 1 Staff Pool (rotates in order)',
@@ -197,7 +200,7 @@ class RosterGenerateForm(forms.Form):
     )
 
     slot2_staff = forms.ModelMultipleChoiceField(
-        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
         label='Slot 2 Staff Pool',
@@ -227,7 +230,7 @@ class RosterGenerateForm(forms.Form):
     )
 
     slot3_staff = forms.ModelMultipleChoiceField(
-        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
         label='Slot 3 Staff Pool',
@@ -258,19 +261,19 @@ class RosterGenerateForm(forms.Form):
 
     # ── PTech shift fields ────────────────────────────────────────────────────
     ptech_morning_staff = forms.ModelMultipleChoiceField(
-        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PTECH').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
         label='Morning (M) Staff — start on Morning shift',
     )
     ptech_afternoon_staff = forms.ModelMultipleChoiceField(
-        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PTECH').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
         label='Afternoon (A) Staff — start on Afternoon shift',
     )
     ptech_cm_staff = forms.ModelMultipleChoiceField(
-        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PTECH').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
         label='CM Weekend Rotation Staff (rotates in alphabetical order)',
@@ -286,6 +289,11 @@ class RosterGenerateForm(forms.Form):
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         label='Give Mon–Tue rest days after CM weekend duty',
+    )
+    ptech_cm_min_gap = forms.IntegerField(
+        initial=0, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
+        label='Min days between CM assignments for same staff (0 = no restriction)',
     )
 
     def clean(self):
@@ -344,17 +352,17 @@ class StaffAvailabilityForm(forms.ModelForm):
 
 class RosterEntryEditForm(forms.Form):
     slot1 = forms.ModelChoiceField(
-        queryset=Staff.objects.filter(is_active=True),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
     )
     slot2 = forms.ModelChoiceField(
-        queryset=Staff.objects.filter(is_active=True),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
     )
     slot3 = forms.ModelChoiceField(
-        queryset=Staff.objects.filter(is_active=True),
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
     )
