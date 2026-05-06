@@ -48,6 +48,14 @@
     display: none;
   }
   .unit-filter-note.visible { display: block; }
+  .pattern-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+  .pattern-section .section-label { font-size: .82rem; font-weight: 600; color: #4b5563; margin-bottom: 6px; }
+  .days-inline { display: flex; flex-wrap: wrap; gap: 6px; }
+  .days-inline .form-check { margin: 0; }
+  .custom-days-row { display: none; margin-top: 8px; }
+  .custom-days-row.visible { display: flex; flex-wrap: wrap; gap: 6px; }
+  .min-gap-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .min-gap-row label { font-size: .82rem; color: #4b5563; margin: 0; white-space: nowrap; }
 </style>
 {% endblock %}
 
@@ -153,6 +161,29 @@
             {% endfor %}
           </div>
         </div>
+        <div class="pattern-section">
+          <div class="section-label"><i class="fas fa-calendar-alt me-1"></i>Pattern Instructions</div>
+          <div class="days-inline" id="slot1-days-pattern">
+            {% for choice in form.slot1_days_pattern %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="custom-days-row" id="slot1-custom-days-row">
+            {% for choice in form.slot1_custom_days %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="min-gap-row">
+            <label for="{{ form.slot1_min_gap.id_for_label }}">{{ form.slot1_min_gap.label }}:</label>
+            {{ form.slot1_min_gap }}
+          </div>
+        </div>
       </div>
 
       <!-- Slot 2 -->
@@ -180,6 +211,29 @@
             {% endfor %}
           </div>
         </div>
+        <div class="pattern-section">
+          <div class="section-label"><i class="fas fa-calendar-alt me-1"></i>Pattern Instructions</div>
+          <div class="days-inline" id="slot2-days-pattern">
+            {% for choice in form.slot2_days_pattern %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="custom-days-row" id="slot2-custom-days-row">
+            {% for choice in form.slot2_custom_days %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="min-gap-row">
+            <label for="{{ form.slot2_min_gap.id_for_label }}">{{ form.slot2_min_gap.label }}:</label>
+            {{ form.slot2_min_gap }}
+          </div>
+        </div>
       </div>
 
       <!-- Slot 3 -->
@@ -205,6 +259,29 @@
               <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
             </div>
             {% endfor %}
+          </div>
+        </div>
+        <div class="pattern-section">
+          <div class="section-label"><i class="fas fa-calendar-alt me-1"></i>Pattern Instructions</div>
+          <div class="days-inline" id="slot3-days-pattern">
+            {% for choice in form.slot3_days_pattern %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="custom-days-row" id="slot3-custom-days-row">
+            {% for choice in form.slot3_custom_days %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="min-gap-row">
+            <label for="{{ form.slot3_min_gap.id_for_label }}">{{ form.slot3_min_gap.label }}:</label>
+            {{ form.slot3_min_gap }}
           </div>
         </div>
       </div>
@@ -314,5 +391,21 @@
   if (unitSelect.value) {
     filterStaffByUnit(unitSelect.value);
   }
+
+  // Show/hide custom days checkboxes per slot
+  function setupCustomDaysToggle(slotNum) {
+    const radios = document.querySelectorAll(`[name="slot${slotNum}_days_pattern"]`);
+    const customRow = document.getElementById(`slot${slotNum}-custom-days-row`);
+    function update() {
+      const val = document.querySelector(`[name="slot${slotNum}_days_pattern"]:checked`);
+      customRow.classList.toggle('visible', val && val.value === 'custom');
+    }
+    radios.forEach(r => r.addEventListener('change', update));
+    update();
+  }
+
+  setupCustomDaysToggle(1);
+  setupCustomDaysToggle(2);
+  setupCustomDaysToggle(3);
 </script>
 {% endblock %}

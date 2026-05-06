@@ -359,6 +359,15 @@ def roster_generate(request):
             slot1_mode=cd['slot1_mode'],
             slot2_mode=cd['slot2_mode'],
             slot3_mode=cd['slot3_mode'],
+            slot1_days_pattern=cd.get('slot1_days_pattern', 'all'),
+            slot1_custom_days=cd.get('slot1_custom_days') or [],
+            slot1_min_gap=cd.get('slot1_min_gap') or 0,
+            slot2_days_pattern=cd.get('slot2_days_pattern', 'all'),
+            slot2_custom_days=cd.get('slot2_custom_days') or [],
+            slot2_min_gap=cd.get('slot2_min_gap') or 0,
+            slot3_days_pattern=cd.get('slot3_days_pattern', 'all'),
+            slot3_custom_days=cd.get('slot3_custom_days') or [],
+            slot3_min_gap=cd.get('slot3_min_gap') or 0,
         )
 
         messages.success(request, f'Roster for {calendar.month_name[month]} {year} generated.')

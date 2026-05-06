@@ -99,6 +99,19 @@ class StaffForm(forms.ModelForm):
         )
 
 
+DAYS_OF_WEEK_CHOICES = [
+    ('0', 'Mon'), ('1', 'Tue'), ('2', 'Wed'), ('3', 'Thu'),
+    ('4', 'Fri'), ('5', 'Sat'), ('6', 'Sun'),
+]
+
+DAYS_PATTERN_CHOICES = [
+    ('all', 'Every day'),
+    ('weekdays', 'Weekdays only (Mon–Fri)'),
+    ('weekends', 'Weekends only (Sat–Sun)'),
+    ('custom', 'Custom days'),
+]
+
+
 class RosterGenerateForm(forms.Form):
     unit = forms.ModelChoiceField(
         queryset=Unit.objects.select_related('department__hospital').all(),
@@ -151,6 +164,24 @@ class RosterGenerateForm(forms.Form):
         initial='rotate',
         label='Slot 1 Mode',
     )
+    slot1_days_pattern = forms.ChoiceField(
+        choices=DAYS_PATTERN_CHOICES,
+        initial='all',
+        widget=forms.RadioSelect(attrs={'class': 'days-pattern-radio'}),
+        label='Apply on',
+    )
+    slot1_custom_days = forms.MultipleChoiceField(
+        choices=DAYS_OF_WEEK_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(),
+        label='Custom days',
+    )
+    slot1_min_gap = forms.IntegerField(
+        initial=0, min_value=0, max_value=6, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
+        label='Min days between same staff (0 = no restriction)',
+    )
+
     slot2_staff = forms.ModelMultipleChoiceField(
         queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
@@ -163,6 +194,24 @@ class RosterGenerateForm(forms.Form):
         initial='fixed',
         label='Slot 2 Mode',
     )
+    slot2_days_pattern = forms.ChoiceField(
+        choices=DAYS_PATTERN_CHOICES,
+        initial='all',
+        widget=forms.RadioSelect(attrs={'class': 'days-pattern-radio'}),
+        label='Apply on',
+    )
+    slot2_custom_days = forms.MultipleChoiceField(
+        choices=DAYS_OF_WEEK_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(),
+        label='Custom days',
+    )
+    slot2_min_gap = forms.IntegerField(
+        initial=0, min_value=0, max_value=6, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
+        label='Min days between same staff (0 = no restriction)',
+    )
+
     slot3_staff = forms.ModelMultipleChoiceField(
         queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
@@ -175,6 +224,23 @@ class RosterGenerateForm(forms.Form):
         initial='fixed',
         label='Slot 3 Mode',
     )
+    slot3_days_pattern = forms.ChoiceField(
+        choices=DAYS_PATTERN_CHOICES,
+        initial='all',
+        widget=forms.RadioSelect(attrs={'class': 'days-pattern-radio'}),
+        label='Apply on',
+    )
+    slot3_custom_days = forms.MultipleChoiceField(
+        choices=DAYS_OF_WEEK_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(),
+        label='Custom days',
+    )
+    slot3_min_gap = forms.IntegerField(
+        initial=0, min_value=0, max_value=6, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
+        label='Min days between same staff (0 = no restriction)',
+    )
 
     def clean(self):
         cleaned = super().clean()
@@ -185,6 +251,9 @@ class RosterGenerateForm(forms.Form):
             raise ValidationError('Select at least one staff for Slot 2.')
         if num_slots >= 3 and not cleaned.get('slot3_staff'):
             raise ValidationError('Select at least one staff for Slot 3.')
+        for n in range(1, num_slots + 1):
+            if cleaned.get(f'slot{n}_days_pattern') == 'custom' and not cleaned.get(f'slot{n}_custom_days'):
+                raise ValidationError(f'Slot {n}: select at least one custom day.')
         return cleaned
 
 
