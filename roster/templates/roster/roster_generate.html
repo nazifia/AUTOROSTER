@@ -56,6 +56,11 @@
   .custom-days-row.visible { display: flex; flex-wrap: wrap; gap: 6px; }
   .min-gap-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
   .min-gap-row label { font-size: .82rem; color: #4b5563; margin: 0; white-space: nowrap; }
+  .ptech-staff-grid { max-height: 200px; }
+  .shift-badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:.78rem; font-weight:700; margin-right:4px; }
+  .shift-M-badge  { background:#D6EAF8; color:#1A5276; }
+  .shift-A-badge  { background:#D5F5E3; color:#1E8449; }
+  .shift-CM-badge { background:#FDEBD0; color:#784212; }
 </style>
 {% endblock %}
 
@@ -101,6 +106,12 @@
             {{ form.roster_title }}
             {% if form.roster_title.errors %}<div class="text-danger small">{{ form.roster_title.errors }}</div>{% endif %}
           </div>
+          <div class="col-md-6">
+            <label class="form-label">Roster Type</label>
+            {{ form.roster_type }}
+            {% if form.roster_type.errors %}<div class="text-danger small">{{ form.roster_type.errors }}</div>{% endif %}
+          </div>
+          <!-- shift_config removed for new PTech logic -->
           <div class="col-md-2">
             <label class="form-label">Month</label>
             {{ form.month }}
@@ -109,15 +120,15 @@
             <label class="form-label">Year</label>
             {{ form.year }}
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 call-only" id="num-slots-wrapper">
             <label class="form-label">Slots</label>
             {{ form.num_slots }}
           </div>
         </div>
       </div>
 
-      <!-- Slot Labels -->
-      <div class="section-card">
+      <!-- Slot Labels (Call only) -->
+      <div class="section-card" id="slot-labels-section">
         <h6><i class="fas fa-tag me-2"></i>Slot Labels</h6>
         <div class="row g-3">
           <div class="col-md-4">
@@ -136,7 +147,7 @@
       </div>
 
       <!-- Slot 1 -->
-      <div class="section-card">
+      <div class="section-card" id="slot1-card">
         <h6><i class="fas fa-user-circle me-2" style="color:#1B4F72;"></i>Slot 1 — <span id="slot1_label_display">FIRST ON CALL</span></h6>
         <div class="mb-3">
           <label class="form-label">Staff Pool <small class="text-muted">(select staff to include in this slot)</small></label>
@@ -286,6 +297,75 @@
         </div>
       </div>
 
+      <!-- PTech shift configuration (shown when PTech selected) -->
+      <div class="section-card ptech-section" id="ptech-section" style="display:none;">
+        <h6><i class="fas fa-clock me-2" style="color:#D4AC0D;"></i>PTech Shift Configuration</h6>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <div class="form-check form-switch mb-2">
+              {{ form.ptech_rotate_shifts }}
+              <label class="form-check-label ms-2" for="{{ form.ptech_rotate_shifts.id_for_label }}">
+                <strong>{{ form.ptech_rotate_shifts.label }}</strong>
+              </label>
+            </div>
+            <div class="form-check form-switch">
+              {{ form.ptech_post_cm_rest }}
+              <label class="form-check-label ms-2" for="{{ form.ptech_post_cm_rest.id_for_label }}">
+                <strong>{{ form.ptech_post_cm_rest.label }}</strong>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" style="color:#1A5276;">
+              <span class="shift-badge shift-M-badge">M</span> Morning Staff
+            </label>
+            <p class="staff-hint">Assigned Morning shift for week 1</p>
+            <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-morning-grid">
+              {% for choice in form.ptech_morning_staff %}
+              <label data-staff-id="{{ choice.data.value }}">
+                {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if form.ptech_morning_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_morning_staff.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" style="color:#1E8449;">
+              <span class="shift-badge shift-A-badge">A</span> Afternoon Staff
+            </label>
+            <p class="staff-hint">Assigned Afternoon shift for week 1</p>
+            <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-afternoon-grid">
+              {% for choice in form.ptech_afternoon_staff %}
+              <label data-staff-id="{{ choice.data.value }}">
+                {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if form.ptech_afternoon_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_afternoon_staff.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" style="color:#784212;">
+              <span class="shift-badge shift-CM-badge">CM</span> Weekend CM Rotation
+            </label>
+            <p class="staff-hint">These staff rotate Combined Morning duty on weekends (SAT–SUN), alphabetical order</p>
+            <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-cm-grid">
+              {% for choice in form.ptech_cm_staff %}
+              <label data-staff-id="{{ choice.data.value }}">
+                {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if form.ptech_cm_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_cm_staff.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
       <div class="d-flex gap-3">
         <button type="submit" class="btn btn-primary px-5">
           <i class="fas fa-magic me-2"></i>Generate Roster
@@ -306,6 +386,35 @@
   const unitSelect = document.getElementById('id_unit');
   const deptFilter = document.getElementById('dept-filter');
   const unitNote = document.getElementById('unit-staff-note');
+  const rosterTypeRadios = document.querySelectorAll('[name="roster_type"]');
+  const numSlotsWrapper = document.getElementById('num-slots-wrapper');
+  const slotLabelsSection = document.getElementById('slot-labels-section');
+  const ptechSection = document.getElementById('ptech-section');
+
+  // Identify call-only slot cards (Slot 1, 2, 3)
+  const callSlotCards = document.querySelectorAll('#slot1-card, #slot2-card, #slot3-card, .section-card:has(#slot1-staff-grid)');
+
+  function updateRosterType() {
+    const selected = document.querySelector('[name="roster_type"]:checked');
+    if (!selected) return;
+    const isPTech = selected.value === 'PTECH';
+    // PTech: show ptech section, hide call-specific sections
+    ptechSection.style.display = isPTech ? '' : 'none';
+    numSlotsWrapper.style.display = isPTech ? 'none' : '';
+    if (slotLabelsSection) slotLabelsSection.style.display = isPTech ? 'none' : '';
+    // Hide/show slot 1/2/3 staff cards
+    document.querySelectorAll('.section-card').forEach(card => {
+      if (card.id === 'ptech-section') return;
+      const hasSlotGrid = card.querySelector('[id$="-staff-grid"]:not([id^="ptech"])');
+      if (hasSlotGrid) card.style.display = isPTech ? 'none' : '';
+    });
+    if (!isPTech) updateLabels();
+  }
+
+  rosterTypeRadios.forEach(radio => radio.addEventListener('change', updateRosterType));
+
+  // Initial toggle
+  updateRosterType();
 
   function updateSlotVisibility() {
     const n = parseInt(numSlotsSelect.value);
@@ -373,6 +482,12 @@
     });
     unitNote.classList.remove('visible');
   }
+
+  // Pre-check all PTech staff grids when unit is selected (convenience)
+  unitSelect.addEventListener('change', function () {
+    // PTech: auto-check all visible staff in morning grid as a starting point
+    // (user can uncheck and move to afternoon/cm)
+  });
 
   document.getElementById('show-all-staff').addEventListener('click', function (e) {
     e.preventDefault();

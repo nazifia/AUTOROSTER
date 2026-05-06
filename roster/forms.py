@@ -2,7 +2,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Submit, HTML, Div, Field
-from .models import Department, Hospital, Staff, Roster, Unit, StaffAvailability
+from .models import (Department, Hospital, Staff, Roster, Unit, StaffAvailability,
+                      ROSTER_TYPE_CHOICES, PTECH_SHIFT_CONFIG_CHOICES, SHIFT_CONFIG_DETAILS)
 
 CURRENT_YEAR = 2026
 
@@ -122,6 +123,18 @@ class RosterGenerateForm(forms.Form):
         initial="PHARMACISTS' CALL DUTY ROSTER",
         widget=forms.TextInput(attrs={'class': 'form-control'}),
     )
+    roster_type = forms.ChoiceField(
+        choices=ROSTER_TYPE_CHOICES,
+        initial='CALL',
+        widget=forms.RadioSelect(attrs={'id': 'id_roster_type'}),
+        label='Roster Type',
+    )
+    shift_config = forms.ChoiceField(
+        choices=PTECH_SHIFT_CONFIG_CHOICES,
+        required=False,
+        widget=forms.RadioSelect(attrs={'id': 'id_shift_config', 'class': 'ptech-only'}),
+        label='PTech Shift Configuration',
+    )
     month = forms.ChoiceField(
         choices=[(i, f"{i:02d} — {__import__('calendar').month_name[i]}") for i in range(1, 13)],
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -156,6 +169,7 @@ class RosterGenerateForm(forms.Form):
     slot1_staff = forms.ModelMultipleChoiceField(
         queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
+        required=False,
         label='Slot 1 Staff Pool (rotates in order)',
     )
     slot1_mode = forms.ChoiceField(
@@ -242,18 +256,58 @@ class RosterGenerateForm(forms.Form):
         label='Min days between same staff (0 = no restriction)',
     )
 
+    # ── PTech shift fields ────────────────────────────────────────────────────
+    ptech_morning_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label='Morning (M) Staff — start on Morning shift',
+    )
+    ptech_afternoon_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label='Afternoon (A) Staff — start on Afternoon shift',
+    )
+    ptech_cm_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.filter(is_active=True).select_related('unit__department'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label='CM Weekend Rotation Staff (rotates in alphabetical order)',
+    )
+    ptech_rotate_shifts = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Rotate shifts weekly (M↔A each week)',
+    )
+    ptech_post_cm_rest = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Give Mon–Tue rest days after CM weekend duty',
+    )
+
     def clean(self):
         cleaned = super().clean()
-        num_slots = int(cleaned.get('num_slots', 3))
-        if not cleaned.get('slot1_staff'):
-            raise ValidationError('Select at least one staff for Slot 1.')
-        if num_slots >= 2 and not cleaned.get('slot2_staff'):
-            raise ValidationError('Select at least one staff for Slot 2.')
-        if num_slots >= 3 and not cleaned.get('slot3_staff'):
-            raise ValidationError('Select at least one staff for Slot 3.')
-        for n in range(1, num_slots + 1):
-            if cleaned.get(f'slot{n}_days_pattern') == 'custom' and not cleaned.get(f'slot{n}_custom_days'):
-                raise ValidationError(f'Slot {n}: select at least one custom day.')
+        roster_type = cleaned.get('roster_type')
+
+        if roster_type == 'PTECH':
+            morning = cleaned.get('ptech_morning_staff') or []
+            afternoon = cleaned.get('ptech_afternoon_staff') or []
+            if not morning and not afternoon:
+                raise ValidationError('Select at least one staff for Morning or Afternoon shift.')
+        else:
+            num_slots = int(cleaned.get('num_slots', 3))
+            if not cleaned.get('slot1_staff'):
+                raise ValidationError('Select at least one staff for Slot 1.')
+            if num_slots >= 2 and not cleaned.get('slot2_staff'):
+                raise ValidationError('Select at least one staff for Slot 2.')
+            if num_slots >= 3 and not cleaned.get('slot3_staff'):
+                raise ValidationError('Select at least one staff for Slot 3.')
+            for n in range(1, num_slots + 1):
+                if cleaned.get(f'slot{n}_days_pattern') == 'custom' and not cleaned.get(f'slot{n}_custom_days'):
+                    raise ValidationError(f'Slot {n}: select at least one custom day.')
         return cleaned
 
 

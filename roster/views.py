@@ -9,8 +9,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 
 from .forms import DepartmentForm, HospitalForm, RosterGenerateForm, StaffAvailabilityForm, StaffForm, UnitForm
-from .models import Department, Hospital, Roster, RosterEntry, Staff, StaffAvailability, Unit
-from .utils import export_roster_to_excel, generate_roster_entries
+from .models import (Department, Hospital, Roster, RosterEntry, Staff, StaffAvailability, Unit,
+                       PTECH_SHIFT_CHOICES)
+from .models import PtechStaffEntry
+from .utils import (export_ptech_to_excel, export_roster_to_excel,
+                    generate_ptech_roster_entries, generate_roster_entries)
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -329,7 +332,8 @@ def staff_by_unit(request, unit_id):
 @login_required
 def roster_list(request):
     rosters = Roster.objects.select_related('unit__department__hospital').annotate(
-        entries_count=Count('entries'),
+        entries_count=Count('entries', distinct=True),
+        ptech_entries_count=Count('ptech_entries', distinct=True),
     )
     paginator = Paginator(rosters, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -339,12 +343,45 @@ def roster_list(request):
 @login_required
 def roster_detail(request, pk):
     roster = get_object_or_404(Roster, pk=pk)
-    entries = roster.entries.select_related('slot1', 'slot2', 'slot3').order_by('date')
     all_staff = Staff.objects.filter(unit=roster.unit, is_active=True)
+
+    if roster.roster_type == 'PTECH':
+        _, num_days = calendar.monthrange(roster.year, roster.month)
+        from datetime import date as date_cls
+        ptech_dates = [date_cls(roster.year, roster.month, d) for d in range(1, num_days + 1)]
+
+        ptech_entries = roster.ptech_entries.select_related('staff').order_by('staff__name', 'date')
+        staff_order = {}
+        ptech_rows = []
+        for entry in ptech_entries:
+            if entry.staff_id not in staff_order:
+                staff_order[entry.staff_id] = len(ptech_rows)
+                ptech_rows.append({
+                    'staff': entry.staff,
+                    'shifts': [None] * num_days,
+                    'entry_ids': [None] * num_days,
+                })
+            idx = staff_order[entry.staff_id]
+            ptech_rows[idx]['shifts'][entry.date.day - 1] = entry.shift
+            ptech_rows[idx]['entry_ids'][entry.date.day - 1] = entry.pk
+
+        for row in ptech_rows:
+            row['day_data'] = list(zip(ptech_dates, row['shifts'], row['entry_ids']))
+
+        return render(request, 'roster/roster_detail.html', {
+            'roster': roster,
+            'all_staff': all_staff,
+            'is_ptech': True,
+            'ptech_rows': ptech_rows,
+            'ptech_dates': ptech_dates,
+        })
+
+    entries = roster.entries.select_related('slot1', 'slot2', 'slot3').order_by('date')
     return render(request, 'roster/roster_detail.html', {
         'roster': roster,
         'entries': entries,
         'all_staff': all_staff,
+        'is_ptech': False,
     })
 
 
@@ -362,35 +399,55 @@ def roster_generate(request):
 
         Roster.objects.filter(unit=unit, month=month, year=year).delete()
 
-        roster = Roster.objects.create(
-            unit=unit,
-            roster_title=cd['roster_title'],
-            month=month,
-            year=year,
-            num_slots=num_slots,
-            slot1_label=cd['slot1_label'],
-            slot2_label=cd.get('slot2_label') or 'SECOND ON CALL',
-            slot3_label=cd.get('slot3_label') or 'THIRD ON CALL',
-        )
+        roster_data = {
+            'unit': unit,
+            'roster_title': cd['roster_title'],
+            'month': month,
+            'year': year,
+            'roster_type': cd['roster_type'],
+        }
 
-        generate_roster_entries(
-            roster,
-            slot1_staff=cd['slot1_staff'],
-            slot2_staff=cd.get('slot2_staff') or [],
-            slot3_staff=cd.get('slot3_staff') or [],
-            slot1_mode=cd['slot1_mode'],
-            slot2_mode=cd['slot2_mode'],
-            slot3_mode=cd['slot3_mode'],
-            slot1_days_pattern=cd.get('slot1_days_pattern', 'all'),
-            slot1_custom_days=cd.get('slot1_custom_days') or [],
-            slot1_min_gap=cd.get('slot1_min_gap') or 0,
-            slot2_days_pattern=cd.get('slot2_days_pattern', 'all'),
-            slot2_custom_days=cd.get('slot2_custom_days') or [],
-            slot2_min_gap=cd.get('slot2_min_gap') or 0,
-            slot3_days_pattern=cd.get('slot3_days_pattern', 'all'),
-            slot3_custom_days=cd.get('slot3_custom_days') or [],
-            slot3_min_gap=cd.get('slot3_min_gap') or 0,
-        )
+        if cd['roster_type'] == 'PTECH':
+            roster_data['num_slots'] = 1
+            roster_data['slot1_label'] = 'MORNING'
+            roster_data['slot2_label'] = 'AFTERNOON'
+            roster_data['slot3_label'] = 'OFF'
+        else:
+            roster_data['num_slots'] = num_slots
+            roster_data['slot1_label'] = cd['slot1_label']
+            roster_data['slot2_label'] = cd.get('slot2_label') or 'SECOND ON CALL'
+            roster_data['slot3_label'] = cd.get('slot3_label') or 'THIRD ON CALL'
+
+        roster = Roster.objects.create(**roster_data)
+
+        if cd['roster_type'] == 'PTECH':
+            generate_ptech_roster_entries(
+                roster,
+                morning_staff=cd.get('ptech_morning_staff') or [],
+                afternoon_staff=cd.get('ptech_afternoon_staff') or [],
+                cm_staff=cd.get('ptech_cm_staff') or [],
+                post_cm_rest=bool(cd.get('ptech_post_cm_rest')),
+                rotate_shifts=bool(cd.get('ptech_rotate_shifts')),
+            )
+        else:
+            generate_roster_entries(
+                roster,
+                slot1_staff=cd['slot1_staff'],
+                slot2_staff=cd.get('slot2_staff') or [],
+                slot3_staff=cd.get('slot3_staff') or [],
+                slot1_mode=cd['slot1_mode'],
+                slot2_mode=cd['slot2_mode'],
+                slot3_mode=cd['slot3_mode'],
+                slot1_days_pattern=cd.get('slot1_days_pattern', 'all'),
+                slot1_custom_days=cd.get('slot1_custom_days') or [],
+                slot1_min_gap=cd.get('slot1_min_gap') or 0,
+                slot2_days_pattern=cd.get('slot2_days_pattern', 'all'),
+                slot2_custom_days=cd.get('slot2_custom_days') or [],
+                slot2_min_gap=cd.get('slot2_min_gap') or 0,
+                slot3_days_pattern=cd.get('slot3_days_pattern', 'all'),
+                slot3_custom_days=cd.get('slot3_custom_days') or [],
+                slot3_min_gap=cd.get('slot3_min_gap') or 0,
+            )
 
         messages.success(request, f'Roster for {calendar.month_name[month]} {year} generated.')
         return redirect('roster_detail', pk=roster.pk)
@@ -411,7 +468,10 @@ def roster_delete(request, pk):
 @login_required
 def roster_export(request, pk):
     roster = get_object_or_404(Roster, pk=pk)
-    xlsx = export_roster_to_excel(roster)
+    if roster.roster_type == 'PTECH':
+        xlsx = export_ptech_to_excel(roster)
+    else:
+        xlsx = export_roster_to_excel(roster)
     month_name = calendar.month_name[roster.month]
     filename = f"Roster_{month_name}_{roster.year}.xlsx"
     response = HttpResponse(
@@ -450,3 +510,17 @@ def entry_update(request, pk):
         'slot2': entry.slot2.display_name if entry.slot2 else '',
         'slot3': entry.slot3.display_name if entry.slot3 else '',
     })
+
+
+@login_required
+def ptech_entry_update(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+    entry = get_object_or_404(PtechStaffEntry, pk=pk)
+    shift = request.POST.get('shift', '').upper()
+    valid_codes = {code for code, _ in PTECH_SHIFT_CHOICES}
+    if shift not in valid_codes:
+        return JsonResponse({'error': f'Invalid shift code: {shift}'}, status=400)
+    entry.shift = shift
+    entry.save()
+    return JsonResponse({'shift': entry.shift})

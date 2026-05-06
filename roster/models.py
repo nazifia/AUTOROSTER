@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 import calendar
 
 
@@ -76,12 +77,42 @@ class StaffAvailability(models.Model):
 
 MONTH_CHOICES = [(i, calendar.month_name[i]) for i in range(1, 13)]
 
+ROSTER_TYPE_CHOICES = [
+    ('CALL', 'Call Duty Roster'),
+    ('PTECH', 'PTech Shift Roster'),
+]
+
+PTECH_SHIFT_CHOICES = [
+    ('M', 'Morning'),
+    ('A', 'Afternoon'),
+    ('O', 'Off'),
+    ('CM', 'Combined Morning'),
+    ('L', 'Leave'),
+]
+
+# Kept for migration history; no longer used in generation logic.
+PTECH_SHIFT_CONFIG_CHOICES = [
+    ('MA_N', 'Morning, Afternoon, Night'),
+    ('MAN_N', 'Morning-Afternoon, Night'),
+    ('MA_NN', 'Morning, Afternoon-Night'),
+    ('MAN_NN', 'Morning-Afternoon-Night'),
+]
+
+SHIFT_CONFIG_DETAILS = {
+    'MA_N': {'num_slots': 3, 'slot1': 'MORNING', 'slot2': 'AFTERNOON', 'slot3': 'NIGHT'},
+    'MAN_N': {'num_slots': 2, 'slot1': 'MORNING-AFTERNOON', 'slot2': 'NIGHT', 'slot3': None},
+    'MA_NN': {'num_slots': 2, 'slot1': 'MORNING', 'slot2': 'AFTERNOON-NIGHT', 'slot3': None},
+    'MAN_NN': {'num_slots': 1, 'slot1': 'MORNING-AFTERNOON-NIGHT', 'slot2': None, 'slot3': None},
+}
+
 
 class Roster(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name='rosters', db_index=True)
     roster_title = models.CharField(max_length=200, default="PHARMACISTS' CALL DUTY ROSTER")
     month = models.IntegerField(choices=MONTH_CHOICES, db_index=True)
     year = models.IntegerField(db_index=True)
+    roster_type = models.CharField(max_length=10, choices=ROSTER_TYPE_CHOICES, default='CALL', db_index=True)
+    shift_config = models.CharField(max_length=10, choices=PTECH_SHIFT_CONFIG_CHOICES, blank=True, null=True, help_text='Required for PTech rosters')
     num_slots = models.IntegerField(default=3, choices=[(1, '1 Slot'), (2, '2 Slots'), (3, '3 Slots')])
     slot1_label = models.CharField(max_length=100, default='FIRST ON CALL')
     slot2_label = models.CharField(max_length=100, default='SECOND ON CALL')
@@ -95,6 +126,11 @@ class Roster(models.Model):
     @property
     def month_year_display(self):
         return f"{calendar.month_name[self.month].upper()}, {self.year}."
+
+    def clean(self):
+        super().clean()
+        if self.roster_type != 'PTECH':
+            self.shift_config = None
 
     class Meta:
         ordering = ['-year', '-month']
@@ -127,4 +163,23 @@ class RosterEntry(models.Model):
         unique_together = ['roster', 'date']
         indexes = [
             models.Index(fields=['roster', 'date']),
+        ]
+
+
+class PtechStaffEntry(models.Model):
+    """Per-staff per-day shift assignment for PTech rosters."""
+    roster = models.ForeignKey(Roster, on_delete=models.CASCADE, related_name='ptech_entries', db_index=True)
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='ptech_entries', db_index=True)
+    date = models.DateField(db_index=True)
+    shift = models.CharField(max_length=2, choices=PTECH_SHIFT_CHOICES)
+
+    def __str__(self):
+        return f"{self.date} {self.staff} — {self.shift}"
+
+    class Meta:
+        ordering = ['date', 'staff__name']
+        unique_together = ['roster', 'staff', 'date']
+        indexes = [
+            models.Index(fields=['roster', 'date']),
+            models.Index(fields=['roster', 'staff']),
         ]

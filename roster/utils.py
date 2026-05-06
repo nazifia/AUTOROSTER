@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 
 from datetime import timedelta
 
-from .models import RosterEntry, StaffAvailability
+from .models import PtechStaffEntry, RosterEntry, StaffAvailability
 
 
 def _build_unavailability_map(staff_ids, year, month):
@@ -133,6 +133,251 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
         entries.append(RosterEntry(roster=roster, date=d, slot1=s1, slot2=s2, slot3=s3))
 
     RosterEntry.objects.bulk_create(entries)
+
+
+def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_staff,
+                                   post_cm_rest=True, rotate_shifts=True):
+    """
+    Generate PtechStaffEntry records (staff×day matrix) for a PTech roster.
+
+    morning_staff  – staff starting on M shift for week 1
+    afternoon_staff – staff starting on A shift for week 1
+    cm_staff       – ordered list of staff who rotate CM duty on weekends
+    post_cm_rest   – give Mon+Tue off after each CM weekend
+    rotate_shifts  – alternate M/A each week; if False, shift is fixed for month
+    """
+    PtechStaffEntry.objects.filter(roster=roster).delete()
+
+    year, month = roster.year, roster.month
+    _, num_days = calendar.monthrange(year, month)
+    first_day = date(year, month, 1)
+
+    morning_ids = {s.id for s in morning_staff}
+    afternoon_ids = {s.id for s in afternoon_staff}
+    known_ids = morning_ids | afternoon_ids
+    # CM-only staff (not in M/A pools) still need daily entries
+    extra_cm = [s for s in cm_staff if s.id not in known_ids]
+    all_staff = list(morning_staff) + list(afternoon_staff) + extra_cm
+    if not all_staff:
+        return
+
+    initial_shift = {s.id: 'M' for s in morning_staff}
+    initial_shift.update({s.id: 'A' for s in afternoon_staff})
+
+    unavailability = _build_unavailability_map([s.id for s in all_staff], year, month)
+
+    # First Monday on or after month start (week-rotation anchor)
+    fdw = first_day.weekday()
+    first_monday = first_day if fdw == 0 else first_day + timedelta(days=(7 - fdw) % 7)
+
+    # Collect SAT-SUN pairs within the month
+    weekends = []
+    for d in range(1, num_days + 1):
+        cur = date(year, month, d)
+        if cur.weekday() == 5:  # Saturday
+            next_d = date(year, month, d + 1) if d + 1 <= num_days else None
+            sun = next_d if (next_d and next_d.weekday() == 6) else None
+            weekends.append((cur, sun))
+
+    # Assign CM staff round-robin to each weekend
+    cm_pool = list(cm_staff)
+    cm_date_staff = {}  # date → staff obj
+    for idx, (sat, sun) in enumerate(weekends):
+        if not cm_pool:
+            break
+        cm = cm_pool[idx % len(cm_pool)]
+        cm_date_staff[sat] = cm
+        if sun:
+            cm_date_staff[sun] = cm
+
+    # Build post-CM rest dates: Mon + Tue after each CM weekend
+    post_cm_map = {}  # staff_id → set of dates
+    if post_cm_rest and cm_pool:
+        for idx, (sat, sun) in enumerate(weekends):
+            cm = cm_pool[idx % len(cm_pool)]
+            base = sun or sat
+            for offset in (1, 2):
+                rest = base + timedelta(days=offset)
+                if rest.month == month:
+                    post_cm_map.setdefault(cm.id, set()).add(rest)
+
+    entries = []
+    for d in range(1, num_days + 1):
+        cur = date(year, month, d)
+        unavail = unavailability.get(cur, set())
+        is_weekend = cur.weekday() >= 5
+
+        # Week index: 0 = partial days before first Monday, 1 = first full week, …
+        if cur < first_monday:
+            week_idx = 0
+        else:
+            week_idx = 1 + (cur - first_monday).days // 7
+
+        for staff in all_staff:
+            if is_weekend:
+                cm_this = cm_date_staff.get(cur)
+                shift = 'CM' if (cm_this and cm_this.id == staff.id) else 'O'
+            elif staff.id in unavail:
+                shift = 'L'
+            elif staff.id in post_cm_map and cur in post_cm_map[staff.id]:
+                shift = 'O'
+            else:
+                base = initial_shift.get(staff.id, 'M')
+                if rotate_shifts:
+                    # Treat partial week same as week 1; alternate from week 1 onwards
+                    eff = max(week_idx, 1)
+                    shift = base if (eff - 1) % 2 == 0 else ('A' if base == 'M' else 'M')
+                else:
+                    shift = base
+
+            entries.append(PtechStaffEntry(roster=roster, staff=staff, date=cur, shift=shift))
+
+    PtechStaffEntry.objects.bulk_create(entries)
+
+
+def export_ptech_to_excel(roster):
+    """Return BytesIO of xlsx matching the FTH Katsina PTech matrix format."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"{roster.get_month_display()} {roster.year}"
+
+    unit = roster.unit
+    dept = unit.department
+    year, month_num = roster.year, roster.month
+    _, num_days = calendar.monthrange(year, month_num)
+    all_dates = [date(year, month_num, d) for d in range(1, num_days + 1)]
+
+    # Fetch all entries
+    entries = roster.ptech_entries.select_related('staff').order_by('staff__name', 'date')
+    # Build matrix: staff_id → {date: shift}
+    staff_objs = {}  # staff_id → Staff (ordered by name via queryset)
+    matrix = {}
+    for e in entries:
+        staff_objs[e.staff_id] = e.staff
+        matrix.setdefault(e.staff_id, {})[e.date] = e.shift
+
+    staff_list = list(staff_objs.values())
+
+    # Styles
+    thin = Side(style='thin')
+    medium = Side(style='medium')
+    border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
+    border_med = Border(left=medium, right=medium, top=medium, bottom=medium)
+
+    header_fill = PatternFill('solid', fgColor='1B4F72')
+    sub_fill = PatternFill('solid', fgColor='154360')
+    date_hdr_fill = PatternFill('solid', fgColor='2E86C1')
+    weekend_fill = PatternFill('solid', fgColor='FEF9E7')
+    m_fill = PatternFill('solid', fgColor='D6EAF8')
+    a_fill = PatternFill('solid', fgColor='D5F5E3')
+    cm_fill = PatternFill('solid', fgColor='FDEBD0')
+    l_fill = PatternFill('solid', fgColor='FADBD8')
+    o_fill = PatternFill('solid', fgColor='F2F3F4')
+
+    shift_fills = {'M': m_fill, 'A': a_fill, 'CM': cm_fill, 'L': l_fill, 'O': o_fill}
+
+    # Split into two halves (days 1-16 and 17-end) like the reference
+    halves = [all_dates[:16], all_dates[16:]]
+
+    # Header rows (spanning full width: name col + up to 16 day cols + 1 spacer = 18 cols)
+    max_cols = 18
+
+    def merge_header(row, val, fill, font_size=12, bold=True, color='FFFFFF'):
+        end_col = get_column_letter(max_cols)
+        ws.merge_cells(f'A{row}:{end_col}{row}')
+        cell = ws[f'A{row}']
+        cell.value = val
+        cell.font = Font(name='Calibri', bold=bold, size=font_size, color=color)
+        cell.fill = fill
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell.border = border_med
+        ws.row_dimensions[row].height = 22
+
+    merge_header(1, dept.hospital.name.upper(), header_fill, font_size=14)
+    merge_header(2, dept.department_name.upper(), header_fill, font_size=12)
+    merge_header(3, unit.unit_name.upper(), header_fill, font_size=11)
+    merge_header(4, roster.roster_title.upper(), sub_fill, font_size=13)
+    merge_header(5, roster.month_year_display, PatternFill('solid', fgColor='1A5276'), font_size=12)
+
+    # Name column width
+    ws.column_dimensions['A'].width = 26
+    for col_idx in range(2, max_cols + 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = 5
+
+    start_row = 6
+    for half_dates in halves:
+        if not half_dates:
+            continue
+
+        date_row = start_row
+        day_row = start_row + 1
+        data_start = start_row + 2
+
+        # DATE header row
+        ws.row_dimensions[date_row].height = 16
+        cell = ws.cell(row=date_row, column=1, value='')
+        cell.fill = date_hdr_fill
+        cell.border = border_all
+        cell = ws.cell(row=date_row, column=2, value='DATE')
+        cell.font = Font(name='Calibri', bold=True, size=9, color='FFFFFF')
+        cell.fill = date_hdr_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border_all
+        for ci, d in enumerate(half_dates, start=3):
+            cell = ws.cell(row=date_row, column=ci, value=d.day)
+            cell.font = Font(name='Calibri', bold=True, size=9, color='FFFFFF')
+            cell.fill = date_hdr_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border_all
+
+        # DAY header row
+        ws.row_dimensions[day_row].height = 16
+        cell = ws.cell(row=day_row, column=1, value='')
+        cell.fill = date_hdr_fill
+        cell.border = border_all
+        cell = ws.cell(row=day_row, column=2, value='DAY')
+        cell.font = Font(name='Calibri', bold=True, size=9, color='FFFFFF')
+        cell.fill = date_hdr_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border_all
+        for ci, d in enumerate(half_dates, start=3):
+            is_wknd = d.weekday() >= 5
+            cell = ws.cell(row=day_row, column=ci, value=d.strftime('%a').upper())
+            cell.font = Font(name='Calibri', bold=True, size=9,
+                             color='C0392B' if is_wknd else 'FFFFFF')
+            cell.fill = date_hdr_fill if not is_wknd else weekend_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border_all
+
+        # Staff rows
+        for ri, staff in enumerate(staff_list):
+            row = data_start + ri
+            ws.row_dimensions[row].height = 17
+            cell = ws.cell(row=row, column=1, value=staff.display_name)
+            cell.font = Font(name='Calibri', bold=True, size=9, color='1B2631')
+            cell.alignment = Alignment(horizontal='left', vertical='center')
+            cell.border = border_all
+
+            cell = ws.cell(row=row, column=2, value='')
+            cell.border = border_all
+
+            for ci, d in enumerate(half_dates, start=3):
+                shift = matrix.get(staff.id, {}).get(d, '')
+                is_wknd = d.weekday() >= 5
+                fill = shift_fills.get(shift, weekend_fill if is_wknd else PatternFill())
+                cell = ws.cell(row=row, column=ci, value=shift)
+                cell.font = Font(name='Calibri', bold=(shift == 'CM'), size=9,
+                                 color='7D6608' if is_wknd else '1B2631')
+                cell.fill = fill
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border_all
+
+        start_row = data_start + len(staff_list) + 1  # blank row between halves
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
 
 
 def export_roster_to_excel(roster):

@@ -13,42 +13,48 @@
 
 {% block extra_head %}
 <style>
+  /* ── Call roster table ── */
   .roster-view-table { width: 100%; border-collapse: collapse; }
   .roster-view-table th {
-    background: #1B4F72;
-    color: #fff;
-    font-size: .78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    padding: 12px 14px;
-    text-align: center;
+    background: #1B4F72; color: #fff; font-size: .78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; padding: 12px 14px; text-align: center;
   }
   .roster-view-table td {
-    padding: 9px 12px;
-    text-align: center;
-    font-size: .84rem;
-    border-bottom: 1px solid #e9eef3;
-    vertical-align: middle;
+    padding: 9px 12px; text-align: center; font-size: .84rem;
+    border-bottom: 1px solid #e9eef3; vertical-align: middle;
   }
   .roster-view-table tr:hover td { background: #f0f7ff; }
   .roster-view-table .weekend td { background: #fffbeb; }
   .roster-view-table .weekend:hover td { background: #fef3c7; }
-  .day-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: .78rem;
-  }
+  .day-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: .78rem; }
   .day-weekday { background: #dbeafe; color: #1e40af; }
   .day-weekend { background: #fde68a; color: #92400e; }
   .staff-cell { font-weight: 500; color: #1B4F72; }
   .empty-cell { color: #9ca3af; font-style: italic; font-size: .78rem; }
   .edit-btn { opacity: 0; transition: opacity 0.15s; }
   tr:hover .edit-btn { opacity: 1; }
-  .inline-edit-form { display: none; }
-  .inline-edit-form.active { display: table-row; }
+
+  /* ── PTech matrix table ── */
+  .ptech-matrix { border-collapse: collapse; font-size: .78rem; }
+  .ptech-matrix th, .ptech-matrix td {
+    border: 1px solid #d1d5db; text-align: center; padding: 4px 3px; white-space: nowrap;
+  }
+  .ptech-matrix th { background: #1B4F72; color: #fff; font-weight: 700; font-size: .74rem; }
+  .ptech-matrix th.day-th { background: #2E86C1; }
+  .ptech-matrix .staff-name { text-align: left; font-weight: 600; color: #1B4F72; padding: 4px 10px; min-width: 180px; }
+  .ptech-matrix .wknd-th { background: #D4AC0D; color: #fff; }
+  .shift-M  { background: #D6EAF8; color: #1A5276; font-weight: 700; }
+  .shift-A  { background: #D5F5E3; color: #1E8449; font-weight: 700; }
+  .shift-CM { background: #FDEBD0; color: #784212; font-weight: 700; }
+  .shift-L  { background: #FADBD8; color: #922B21; font-weight: 700; }
+  .shift-O  { background: #F2F3F4; color: #7F8C8D; }
+  .ptech-matrix .shift-cell { cursor: pointer; min-width: 32px; }
+  .ptech-matrix .shift-cell:hover { outline: 2px solid #2E86C1; }
+  /* Legend */
+  .shift-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .shift-legend span {
+    padding: 3px 10px; border-radius: 12px; font-size: .78rem; font-weight: 600; border: 1px solid #e2e8f0;
+  }
 </style>
 {% endblock %}
 
@@ -70,8 +76,22 @@
             <i class="fas fa-calendar me-1"></i>{{ roster.month_year_display }}
           </span>
           <span class="badge ms-2" style="background:#f0fdf4;color:#065f46;font-size:.8rem;padding:5px 12px;border-radius:20px;">
-            {{ entries.count }} days
+            {% if is_ptech %}{{ ptech_dates|length }}{% else %}{{ entries.count }}{% endif %} days
           </span>
+          {% if roster.roster_type == 'PTECH' %}
+          <span class="badge ms-2" style="background:#fef3c7;color:#92400e;font-size:.8rem;padding:5px 12px;border-radius:20px;">
+            <i class="fas fa-clock me-1"></i>PTech Shift Roster
+          </span>
+          {% if roster.shift_config %}
+          <span class="badge ms-2" style="background:#e0e7ff;color:#3730a3;font-size:.8rem;padding:5px 12px;border-radius:20px;">
+            {{ roster.get_shift_config_display }}
+          </span>
+          {% endif %}
+          {% else %}
+          <span class="badge ms-2" style="background:#e8f0f7;color:#1B4F72;font-size:.8rem;padding:5px 12px;border-radius:20px;">
+            <i class="fas fa-phone me-1"></i>Call Duty Roster
+          </span>
+          {% endif %}
         </div>
       </div>
       <div class="col-md-4 text-md-end mt-3 mt-md-0">
@@ -83,7 +103,87 @@
   </div>
 </div>
 
-<!-- Roster table -->
+{% if is_ptech %}
+<!-- PTech matrix roster -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff;border-bottom:2px solid #e8f0f7;">
+    <span style="font-weight:600;color:#1B4F72;"><i class="fas fa-table me-2"></i>Shift Matrix</span>
+    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Click any shift cell to edit</small>
+  </div>
+  <div class="card-body">
+    <div class="shift-legend">
+      <span class="shift-M">M — Morning</span>
+      <span class="shift-A">A — Afternoon</span>
+      <span class="shift-CM">CM — Combined Morning (Weekend)</span>
+      <span class="shift-O">O — Off</span>
+      <span class="shift-L">L — Leave</span>
+    </div>
+    <div class="table-responsive">
+      <table class="ptech-matrix">
+        <thead>
+          <tr>
+            <th class="staff-name">Staff</th>
+            {% for d in ptech_dates %}
+            <th class="{% if d.weekday >= 5 %}wknd-th{% else %}day-th{% endif %}">{{ d.day }}</th>
+            {% endfor %}
+          </tr>
+          <tr>
+            <th class="staff-name" style="font-size:.7rem;font-weight:400;color:#bbb;background:#1B4F72;">—</th>
+            {% for d in ptech_dates %}
+            <th class="{% if d.weekday >= 5 %}wknd-th{% else %}day-th{% endif %}" style="font-size:.68rem;">
+              {{ d|date:"D"|upper }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ptech_rows %}
+          <tr>
+            <td class="staff-name">{{ row.staff.display_name }}</td>
+            {% for d, shift, entry_id in row.day_data %}
+            <td class="shift-cell shift-{{ shift|default:'O' }}"
+                data-entry-id="{{ entry_id|default:'' }}"
+                data-current="{{ shift|default:'O' }}"
+                title="{{ d|date:'D d M' }} — {{ shift|default:'O' }}"
+                onclick="ptechEditCell(this)">
+              {{ shift|default:'O' }}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PTech shift edit modal -->
+<div class="modal fade" id="ptechEditModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="border-radius:12px;">
+      <div class="modal-header" style="background:#1B4F72;color:#fff;border-radius:12px 12px 0 0;">
+        <h6 class="modal-title"><i class="fas fa-pencil-alt me-2"></i>Edit Shift</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <select class="form-select" id="ptech_shift_select">
+          <option value="M">M — Morning</option>
+          <option value="A">A — Afternoon</option>
+          <option value="CM">CM — Combined Morning</option>
+          <option value="O">O — Off</option>
+          <option value="L">L — Leave</option>
+        </select>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="ptechSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- Call duty roster table -->
 <div class="card">
   <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff;border-bottom:2px solid #e8f0f7;">
     <span style="font-weight:600;color:#1B4F72;"><i class="fas fa-table me-2"></i>Roster Entries</span>
@@ -104,7 +204,6 @@
         </thead>
         <tbody>
           {% for entry in entries %}
-          {% with is_weekend=entry.date.weekday|add:0 %}
           <tr class="{% if entry.date.weekday >= 5 %}weekend{% endif %}" id="row-{{ entry.pk }}">
             <td>
               <span class="day-badge {% if entry.date.weekday >= 5 %}day-weekend{% else %}day-weekday{% endif %}">
@@ -131,7 +230,6 @@
               </button>
             </td>
           </tr>
-          {% endwith %}
           {% endfor %}
         </tbody>
       </table>
@@ -139,7 +237,7 @@
   </div>
 </div>
 
-<!-- Edit modal -->
+<!-- Edit modal (Call) -->
 <div class="modal fade" id="editModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:12px;">
@@ -189,10 +287,45 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
+{% if is_ptech %}
+  // ── PTech matrix edit ─────────────────────────────────────────────────────
+  let ptechCurrentCell = null;
+  const ptechModal = new bootstrap.Modal(document.getElementById('ptechEditModal'));
+
+  function ptechEditCell(td) {
+    const entryId = td.dataset.entryId;
+    if (!entryId) return;
+    ptechCurrentCell = td;
+    document.getElementById('ptech_shift_select').value = td.dataset.current || 'O';
+    ptechModal.show();
+  }
+
+  document.getElementById('ptechSaveBtn').addEventListener('click', () => {
+    if (!ptechCurrentCell) return;
+    const entryId = ptechCurrentCell.dataset.entryId;
+    const shift = document.getElementById('ptech_shift_select').value;
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('shift', shift);
+    fetch(`/ptech-entries/${entryId}/update/`, { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.shift) {
+          ptechCurrentCell.textContent = data.shift;
+          ptechCurrentCell.className = `shift-cell shift-${data.shift}`;
+          ptechCurrentCell.dataset.current = data.shift;
+        }
+        ptechModal.hide();
+      });
+  });
+
+{% else %}
+  // ── Call duty edit ────────────────────────────────────────────────────────
   let currentEntryId = null;
   const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 
@@ -234,5 +367,6 @@
     if (!el) return;
     el.innerHTML = val || '<span class="empty-cell">—</span>';
   }
+{% endif %}
 </script>
 {% endblock %}

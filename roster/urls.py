@@ -39,6 +39,7 @@ urlpatterns = [
 
     # Entry inline edit (AJAX)
     path('entries/<int:pk>/update/', views.entry_update, name='entry_update'),
+    path('ptech-entries/<int:pk>/update/', views.ptech_entry_update, name='ptech_entry_update'),
 
     # API
     path('api/units/<int:dept_id>/', views.staff_by_department, name='units_by_department'),
