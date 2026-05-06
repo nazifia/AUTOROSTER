@@ -20,7 +20,20 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "PowerShell(Get-ChildItem C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER -Force | Where-Object { $_.Name -ne 'venv' } | Select-Object Name, PSIsContainer)",
       "Bash(python manage.py makemigrations roster --name staff_availability)",
-      "PowerShell(Get-ChildItem C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER | Where-Object {$_.Name -ne \"venv\"} | Select-Object FullName, PSIsContainer)"
+      "PowerShell(Get-ChildItem C:\\\\Users\\\\Dell\\\\Desktop\\\\AUTOROSTER | Where-Object {$_.Name -ne \"venv\"} | Select-Object FullName, PSIsContainer)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\AUTOROSTER\" -Exclude \"venv\")",
+      "Bash(Select-Object Name, PSIsContainer, LastWriteTime)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\Dell\\\\Desktop\\\\MY_PRODUCTS\\\\AUTOROSTER\\\\**\\\\*.html\")",
+      "Bash(findstr /v venv)",
+      "PowerShell(python manage.py makemigrations roster --name add_ptech_roster_fields)",
+      "PowerShell(python manage.py migrate roster)",
+      "PowerShell(python -m py_compile roster/models.py; python -m py_compile roster/forms.py; python -m py_compile roster/views.py; echo \"Syntax check done\")",
+      "PowerShell(python manage.py check)",
+      "Bash(python manage.py migrate roster)",
+      "Bash(python -c \"from datetime import date; d = date\\(2026,5,1\\); print\\(d.weekday\\(\\)\\)\")",
+      "Bash(python -c \"import roster.views; print\\('views OK'\\)\")",
+      "Bash(python manage.py shell -c \"from roster.forms import RosterGenerateForm; print\\('forms OK'\\)\")"
     ]
   }
 }
