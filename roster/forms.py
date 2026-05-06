@@ -276,7 +276,7 @@ class RosterGenerateForm(forms.Form):
         queryset=Staff.objects.filter(is_active=True, staff_type='PTECH').select_related('unit__department'),
         widget=forms.CheckboxSelectMultiple(),
         required=False,
-        label='CM Weekend Rotation Staff (rotates in alphabetical order)',
+        label='Night (N) Weekend Rotation Staff (rotates in alphabetical order)',
     )
     ptech_rotate_shifts = forms.BooleanField(
         required=False,
@@ -288,12 +288,12 @@ class RosterGenerateForm(forms.Form):
         required=False,
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        label='Give Mon–Tue rest days after CM weekend duty',
+        label='Give Mon–Tue rest days after Night weekend duty',
     )
     ptech_cm_min_gap = forms.IntegerField(
         initial=0, min_value=0, max_value=30, required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
-        label='Min days between CM assignments for same staff (0 = no restriction)',
+        label='Min days between Night assignments for same staff (0 = no restriction)',
     )
 
     def clean(self):

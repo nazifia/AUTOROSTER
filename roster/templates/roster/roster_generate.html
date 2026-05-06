@@ -60,6 +60,7 @@
   .shift-badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:.78rem; font-weight:700; margin-right:4px; }
   .shift-M-badge  { background:#D6EAF8; color:#1A5276; }
   .shift-A-badge  { background:#D5F5E3; color:#1E8449; }
+  .shift-N-badge  { background:#D7BDE2; color:#6C3483; }
   .shift-CM-badge { background:#FDEBD0; color:#784212; }
 </style>
 {% endblock %}
@@ -332,7 +333,7 @@
             <label class="form-label fw-semibold" style="color:#1A5276;">
               <span class="shift-badge shift-M-badge">M</span> Morning Staff
             </label>
-            <p class="staff-hint">Assigned Morning shift for week 1</p>
+            <p class="staff-hint">Assigned Morning shift</p>
             <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-morning-grid">
               {% for choice in form.ptech_morning_staff %}
               <label data-staff-id="{{ choice.data.value }}">
@@ -347,7 +348,7 @@
             <label class="form-label fw-semibold" style="color:#1E8449;">
               <span class="shift-badge shift-A-badge">A</span> Afternoon Staff
             </label>
-            <p class="staff-hint">Assigned Afternoon shift for week 1</p>
+            <p class="staff-hint">Assigned Afternoon shift</p>
             <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-afternoon-grid">
               {% for choice in form.ptech_afternoon_staff %}
               <label data-staff-id="{{ choice.data.value }}">
@@ -359,10 +360,10 @@
           </div>
 
           <div class="col-md-4">
-            <label class="form-label fw-semibold" style="color:#784212;">
-              <span class="shift-badge shift-CM-badge">CM</span> Weekend CM Rotation
+            <label class="form-label fw-semibold" style="color:#6C3483;">
+              <span class="shift-badge shift-N-badge">N</span> Night Staff
             </label>
-            <p class="staff-hint">These staff rotate Combined Morning duty on weekends (SAT–SUN), alphabetical order</p>
+            <p class="staff-hint">These staff rotate Night duty </p>
             <div class="staff-checkbox-grid ptech-staff-grid" id="ptech-cm-grid">
               {% for choice in form.ptech_cm_staff %}
               <label data-staff-id="{{ choice.data.value }}">
