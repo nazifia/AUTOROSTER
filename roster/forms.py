@@ -298,6 +298,14 @@ class RosterGenerateForm(forms.Form):
         label='Min days between Night assignments for same staff (0 = no restriction)',
     )
 
+    ptech_active_shifts = forms.MultipleChoiceField(
+        choices=[('M', 'Morning (M)'), ('A', 'Afternoon (A)'), ('N', 'Night (N)')],
+        initial=['M', 'A', 'N'],
+        widget=forms.CheckboxSelectMultiple(),
+        required=True,
+        label='Shifts to include in roster',
+    )
+
     ptech_morning_work_days = forms.IntegerField(
         initial=5, min_value=1, max_value=30, required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
@@ -334,10 +342,14 @@ class RosterGenerateForm(forms.Form):
         roster_type = cleaned.get('roster_type')
 
         if roster_type == 'PTECH':
+            active_shifts = cleaned.get('ptech_active_shifts') or []
+            if not active_shifts:
+                raise ValidationError('Select at least one shift to include in the roster.')
             morning = cleaned.get('ptech_morning_staff') or []
             afternoon = cleaned.get('ptech_afternoon_staff') or []
-            if not morning and not afternoon:
-                raise ValidationError('Select at least one staff for Morning or Afternoon shift.')
+            cm = cleaned.get('ptech_cm_staff') or []
+            if not morning and not afternoon and not cm:
+                raise ValidationError('Select at least one staff for Morning, Afternoon, or Night shift.')
         else:
             num_slots = int(cleaned.get('num_slots', 3))
             if not cleaned.get('slot1_staff'):

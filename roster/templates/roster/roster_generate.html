@@ -316,8 +316,26 @@
           Use the pool checkboxes below to pick <em>which</em> staff participate; their pool label only sets the starting phase.
         </div>
 
+        <!-- Shift selection -->
+        <div class="mb-3 pb-3 border-bottom" id="ptech-shift-select-row">
+          <label class="form-label fw-semibold">Shifts to include in this roster</label>
+          <div class="d-flex gap-4 flex-wrap">
+            {% for choice in form.ptech_active_shifts %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label fw-semibold" for="{{ choice.id_for_label }}">
+                {{ choice.choice_label }}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          {% if form.ptech_active_shifts.errors %}
+          <div class="text-danger small mt-1">{{ form.ptech_active_shifts.errors }}</div>
+          {% endif %}
+        </div>
+
         <div class="row g-3" id="ptech-pools-row">
-          <div class="col-md-4">
+          <div class="col-md-4" id="ptech-morning-col">
             <label class="form-label fw-semibold" style="color:#1A5276;">
               <span class="shift-badge shift-M-badge">M</span> Morning Staff
             </label>
@@ -340,7 +358,7 @@
             {% if form.ptech_morning_work_days.errors %}<div class="text-danger small mt-1">{{ form.ptech_morning_work_days.errors }}</div>{% endif %}
           </div>
 
-          <div class="col-md-4">
+          <div class="col-md-4" id="ptech-afternoon-col">
             <label class="form-label fw-semibold" style="color:#1E8449;">
               <span class="shift-badge shift-A-badge">A</span> Afternoon Staff
             </label>
@@ -363,7 +381,7 @@
             {% if form.ptech_afternoon_work_days.errors %}<div class="text-danger small mt-1">{{ form.ptech_afternoon_work_days.errors }}</div>{% endif %}
           </div>
 
-          <div class="col-md-4">
+          <div class="col-md-4" id="ptech-night-col">
             <label class="form-label fw-semibold" style="color:#6C3483;">
               <span class="shift-badge shift-N-badge">N</span> Night Staff
             </label>
@@ -576,5 +594,21 @@
   setupCustomDaysToggle(1);
   setupCustomDaysToggle(2);
   setupCustomDaysToggle(3);
+
+  // PTech shift selection → show/hide pool columns
+  const shiftColMap = { 'M': 'ptech-morning-col', 'A': 'ptech-afternoon-col', 'N': 'ptech-night-col' };
+
+  function updatePtechShiftCols() {
+    document.querySelectorAll('[name="ptech_active_shifts"]').forEach(cb => {
+      const col = document.getElementById(shiftColMap[cb.value]);
+      if (col) col.style.display = cb.checked ? '' : 'none';
+    });
+  }
+
+  document.querySelectorAll('[name="ptech_active_shifts"]').forEach(cb => {
+    cb.addEventListener('change', updatePtechShiftCols);
+  });
+
+  updatePtechShiftCols();
 </script>
 {% endblock %}

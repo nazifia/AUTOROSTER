@@ -436,6 +436,7 @@ def roster_generate(request):
                 afternoon_off_days=int(cd.get('ptech_afternoon_off_days') or 0),
                 night_work_days=int(cd.get('ptech_night_work_days') or 2),
                 night_off_days=int(cd.get('ptech_night_off_days') or 5),
+                active_shifts=cd.get('ptech_active_shifts') or ['M', 'A', 'N'],
             )
         else:
             generate_roster_entries(
