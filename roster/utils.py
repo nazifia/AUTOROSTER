@@ -442,6 +442,44 @@ def export_ptech_to_excel(roster):
 
         start_row = data_start + len(staff_list) + 1  # blank row between halves
 
+    # ── Staff Directory ───────────────────────────────────────────────────────
+    dir_start = start_row + 1
+    dir_fill = PatternFill('solid', fgColor='1B4F72')
+    dir_hdr_fill = PatternFill('solid', fgColor='2E86C1')
+    dir_alt_fill = PatternFill('solid', fgColor='EBF5FB')
+    dir_white_fill = PatternFill('solid', fgColor='FFFFFF')
+
+    ws.merge_cells(f'A{dir_start}:C{dir_start}')
+    cell = ws[f'A{dir_start}']
+    cell.value = 'STAFF DIRECTORY'
+    cell.font = Font(name='Calibri', bold=True, size=11, color='FFFFFF')
+    cell.fill = dir_fill
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.border = border_med
+    ws.row_dimensions[dir_start].height = 20
+
+    hdr_row = dir_start + 1
+    for col, label in [(1, 'S/N'), (2, 'NAME'), (3, 'PHONE')]:
+        cell = ws.cell(row=hdr_row, column=col, value=label)
+        cell.font = Font(name='Calibri', bold=True, size=9, color='FFFFFF')
+        cell.fill = dir_hdr_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border_all
+    ws.row_dimensions[hdr_row].height = 16
+    ws.column_dimensions['B'].width = max(ws.column_dimensions['B'].width, 30)
+    ws.column_dimensions['C'].width = 18
+
+    for i, staff in enumerate(staff_list, start=1):
+        row = hdr_row + i
+        row_fill = dir_alt_fill if i % 2 == 0 else dir_white_fill
+        ws.row_dimensions[row].height = 16
+        for col, val in [(1, i), (2, staff.display_name), (3, staff.phone_number or '')]:
+            cell = ws.cell(row=row, column=col, value=val)
+            cell.font = Font(name='Calibri', size=9, color='1B2631')
+            cell.fill = row_fill
+            cell.border = border_all
+            cell.alignment = Alignment(horizontal='center' if col != 2 else 'left', vertical='center')
+
     output = BytesIO()
     wb.save(output)
     output.seek(0)
@@ -516,7 +554,9 @@ def export_roster_to_excel(roster):
     # ── Data rows ─────────────────────────────────────────────────────────────
     entries = roster.entries.select_related('slot1', 'slot2', 'slot3').order_by('date')
 
+    last_data_row = 6
     for row_idx, entry in enumerate(entries, start=7):
+        last_data_row = row_idx
         ws.row_dimensions[row_idx].height = 18
         is_weekend = entry.date.weekday() in (5, 6)
         row_fill = weekend_fill if is_weekend else (alt_fill if row_idx % 2 == 0 else white_fill)
@@ -539,6 +579,49 @@ def export_roster_to_excel(roster):
             cell.font = Font(name='Calibri', size=10,
                              bold=(col_idx == 1),
                              color='7D6608' if is_weekend else '1B2631')
+
+    # ── Staff Directory ───────────────────────────────────────────────────────
+    all_slot_staff = {}
+    for entry in roster.entries.select_related('slot1', 'slot2', 'slot3'):
+        for s in [entry.slot1, entry.slot2, entry.slot3]:
+            if s and s.id not in all_slot_staff:
+                all_slot_staff[s.id] = s
+    dir_staff = sorted(all_slot_staff.values(), key=lambda s: s.name)
+
+    dir_start = last_data_row + 2
+    dir_fill = PatternFill('solid', fgColor='1B4F72')
+    dir_hdr_fill = PatternFill('solid', fgColor='2E86C1')
+    dir_alt_fill = PatternFill('solid', fgColor='EBF5FB')
+    dir_white_fill = PatternFill('solid', fgColor='FFFFFF')
+
+    ws.merge_cells(f'A{dir_start}:C{dir_start}')
+    cell = ws[f'A{dir_start}']
+    cell.value = 'STAFF DIRECTORY'
+    cell.font = Font(name='Calibri', bold=True, size=11, color='FFFFFF')
+    cell.fill = dir_fill
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.border = border_medium
+    ws.row_dimensions[dir_start].height = 20
+
+    hdr_row = dir_start + 1
+    for col, label in [(1, 'S/N'), (2, 'NAME'), (3, 'PHONE')]:
+        cell = ws.cell(row=hdr_row, column=col, value=label)
+        cell.font = Font(name='Calibri', bold=True, size=9, color='FFFFFF')
+        cell.fill = dir_hdr_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border_all
+    ws.row_dimensions[hdr_row].height = 16
+
+    for i, staff in enumerate(dir_staff, start=1):
+        row = hdr_row + i
+        row_fill = dir_alt_fill if i % 2 == 0 else dir_white_fill
+        ws.row_dimensions[row].height = 16
+        for col, val in [(1, i), (2, staff.display_name), (3, staff.phone_number or '')]:
+            cell = ws.cell(row=row, column=col, value=val)
+            cell.font = Font(name='Calibri', size=9, color='1B2631')
+            cell.fill = row_fill
+            cell.border = border_all
+            cell.alignment = Alignment(horizontal='center' if col != 2 else 'left', vertical='center')
 
     output = BytesIO()
     wb.save(output)

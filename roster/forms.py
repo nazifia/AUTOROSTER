@@ -75,12 +75,13 @@ class UnitForm(forms.ModelForm):
 class StaffForm(forms.ModelForm):
     class Meta:
         model = Staff
-        fields = ['unit', 'staff_type', 'title', 'name', 'is_active']
+        fields = ['unit', 'staff_type', 'title', 'name', 'phone_number', 'is_active']
         widgets = {
             'unit': forms.Select(attrs={'class': 'form-select'}),
             'staff_type': forms.Select(attrs={'class': 'form-select'}),
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. PHARM.'}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. IBRAHIM ABUKUR'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 08012345678'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
@@ -97,6 +98,9 @@ class StaffForm(forms.ModelForm):
                 Column('staff_type', css_class='col-md-3'),
                 Column('title', css_class='col-md-2'),
                 Column('name', css_class='col-md-3'),
+            ),
+            Row(
+                Column('phone_number', css_class='col-md-4'),
             ),
             Field('is_active'),
             Submit('submit', 'Save Staff', css_class='btn btn-primary mt-3'),

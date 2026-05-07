@@ -77,6 +77,16 @@
             </div>
           </div>
 
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Phone Number</label>
+              {{ form.phone_number }}
+              {% if form.phone_number.errors %}
+              <div class="text-danger small">{{ form.phone_number.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+
           <div class="mb-3 form-check">
             {{ form.is_active }}
             <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>

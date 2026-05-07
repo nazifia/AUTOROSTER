@@ -47,6 +47,7 @@ class Staff(models.Model):
     staff_type = models.CharField(max_length=10, choices=STAFF_TYPE_CHOICES, default='PHARM', db_index=True)
     title = models.CharField(max_length=50, default='PHARM.')
     name = models.CharField(max_length=200, help_text='Full name e.g. IBRAHIM ABUKUR')
+    phone_number = models.CharField(max_length=20, blank=True, help_text='e.g. 08012345678')
     is_active = models.BooleanField(default=True, db_index=True)
 
     def __str__(self):
