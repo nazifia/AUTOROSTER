@@ -77,7 +77,7 @@
 
       <!-- Step 1: Department & Unit selection -->
       <div class="section-card">
-        <h6><i class="fas fa-info-circle me-2"></i>Roster Details</h6>
+        <h6><i class="fas fa-info-circle me-2"></i><span id="roster-details-heading">Roster Details</span></h6>
         <div class="row g-3">
 
           <!-- Department filter (JS only, not submitted) -->
@@ -300,9 +300,23 @@
 
       <!-- PTech shift configuration (shown when PTech selected) -->
       <div class="section-card ptech-section" id="ptech-section" style="display:none;">
-        <h6><i class="fas fa-clock me-2" style="color:#D4AC0D;"></i>PTech Shift Configuration</h6>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="mb-0"><i class="fas fa-clock me-2" style="color:#D4AC0D;"></i>PTech Shift Configuration</h6>
+          <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+            {{ form.ptech_rotate_shifts }}
+            <label class="form-check-label fw-semibold" for="{{ form.ptech_rotate_shifts.id_for_label }}" style="font-size:.88rem;">
+              Rotate Shifts
+            </label>
+          </div>
+        </div>
+        <div id="ptech-rotate-note" class="alert alert-info py-1 px-2 mb-3" style="font-size:.82rem; display:none;">
+          <i class="fas fa-sync-alt me-1"></i>
+          <strong>Rotation mode:</strong> All selected staff cycle through M&rarr;A&rarr;N shifts automatically.
+          Staff are staggered evenly so every shift has coverage at all times.
+          Use the pool checkboxes below to pick <em>which</em> staff participate; their pool label only sets the starting phase.
+        </div>
 
-        <div class="row g-3">
+        <div class="row g-3" id="ptech-pools-row">
           <div class="col-md-4">
             <label class="form-label fw-semibold" style="color:#1A5276;">
               <span class="shift-badge shift-M-badge">M</span> Morning Staff
@@ -371,7 +385,7 @@
             {% if form.ptech_cm_staff.errors %}<div class="text-danger small mt-1">{{ form.ptech_cm_staff.errors }}</div>{% endif %}
             {% if form.ptech_night_work_days.errors %}<div class="text-danger small mt-1">{{ form.ptech_night_work_days.errors }}</div>{% endif %}
           </div>
-        </div>
+        </div>{# end #ptech-pools-row #}
       </div>
 
       <div class="d-flex gap-3">
@@ -404,13 +418,27 @@
 
   const pageTitleSpan = document.querySelector('.topbar-title');
 
+  const rosterTitleInput = document.getElementById('id_roster_title');
+
   function updateRosterType() {
     const selected = document.querySelector('[name="roster_type"]:checked');
     if (!selected) return;
     const isPTech = selected.value === 'PTECH';
-    const titleText = isPTech ? 'PTECH' : 'Generate Roster';
+    const titleText = isPTech ? "PHARMACY TECHNICIAN'S DUTY ROSTER" : 'Generate Roster';
     if (pageTitleSpan) pageTitleSpan.textContent = titleText;
     document.title = titleText;
+    if (rosterTitleInput) {
+      const PTECH_TITLE = "PHARMACY TECHNICIAN'S DUTY ROSTER";
+      const CALL_TITLE  = "PHARMACISTS' CALL DUTY ROSTER";
+      const cur = rosterTitleInput.value.trim();
+      if (isPTech && cur !== PTECH_TITLE) {
+        rosterTitleInput.value = PTECH_TITLE;
+      } else if (!isPTech && cur !== CALL_TITLE) {
+        rosterTitleInput.value = CALL_TITLE;
+      }
+    }
+    const detailsHeading = document.getElementById('roster-details-heading');
+    if (detailsHeading) detailsHeading.textContent = isPTech ? "PHARMACY TECHNICIAN'S DUTY ROSTER" : 'Roster Details';
     // PTech: show ptech section, hide call-specific sections
     ptechSection.style.display = isPTech ? '' : 'none';
     numSlotsWrapper.style.display = isPTech ? 'none' : '';
@@ -425,6 +453,19 @@
   }
 
   rosterTypeRadios.forEach(radio => radio.addEventListener('change', updateRosterType));
+
+  // Rotate-shifts toggle: show info note
+  const rotateToggle = document.getElementById('{{ form.ptech_rotate_shifts.id_for_label }}') ||
+                       document.querySelector('[name="ptech_rotate_shifts"]');
+  const rotateNote   = document.getElementById('ptech-rotate-note');
+  function updateRotateNote() {
+    if (!rotateNote || !rotateToggle) return;
+    rotateNote.style.display = rotateToggle.checked ? '' : 'none';
+  }
+  if (rotateToggle) {
+    rotateToggle.addEventListener('change', updateRotateNote);
+    updateRotateNote();
+  }
 
   // Initial toggle
   updateRosterType();

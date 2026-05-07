@@ -143,33 +143,80 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
     """
     Generate PtechStaffEntry records (staff×day matrix) for a PTech roster.
 
-    Each shift pool cycles: work_days on → off_days off → repeat.
-    Staff within a pool are staggered so coverage is continuous:
-      staff[i] phase = (i × work_days) % cycle_length
+    rotate_shifts=True  – all staff rotate through M→A→N sequentially, staggered
+                          so shifts are covered at all times.
+    rotate_shifts=False – staff stay in their assigned pool (M/A/N) with
+                          work/off cycling within that pool.
 
-    morning_staff   – staff assigned Morning (M) shift
-    afternoon_staff – staff assigned Afternoon (A) shift
-    cm_staff        – staff assigned Night (N) shift
-    *_work_days     – consecutive work days per cycle for that shift
-    *_off_days      – consecutive off days per cycle for that shift
+    Rotation cycle: M_work → M_off → A_work → A_off → N_work → N_off → repeat.
+    Staff[i] phase = (i * cycle_len // num_staff) % cycle_len, spreading staff
+    evenly across the cycle so every shift block has coverage.
     """
     PtechStaffEntry.objects.filter(roster=roster).delete()
 
     year, month = roster.year, roster.month
     _, num_days = calendar.monthrange(year, month)
 
-    morning_id_set = {s.id for s in morning_staff}
-    afternoon_id_set = {s.id for s in afternoon_staff}
-    night_id_set = {s.id for s in cm_staff}
-    known_ids = morning_id_set | afternoon_id_set
-    extra_night = [s for s in cm_staff if s.id not in known_ids]
-    all_staff = list(morning_staff) + list(afternoon_staff) + extra_night
+    # Deduplicate, preserve order: morning → afternoon → night extras
+    seen = set()
+    all_staff = []
+    for s in list(morning_staff) + list(afternoon_staff) + list(cm_staff):
+        if s.id not in seen:
+            seen.add(s.id)
+            all_staff.append(s)
+
     if not all_staff:
         return
 
     unavailability = _build_unavailability_map([s.id for s in all_staff], year, month)
 
-    # Cycle lengths (0 means always working — no off days in cycle)
+    if rotate_shifts:
+        # Full rotation: each staff cycles M→(off)→A→(off)→N→(off)→repeat
+        total_cycle = (morning_work_days + morning_off_days +
+                       afternoon_work_days + afternoon_off_days +
+                       night_work_days + night_off_days)
+        if total_cycle == 0:
+            return
+
+        n = len(all_staff)
+        stagger = total_cycle // n if n > 0 else 0
+
+        staff_phase = {s.id: (i * stagger) % total_cycle for i, s in enumerate(all_staff)}
+
+        def _rotation_shift(day_1idx, phase):
+            pos = (day_1idx - 1 + phase) % total_cycle
+            if pos < morning_work_days:
+                return 'M'
+            pos -= morning_work_days
+            if pos < morning_off_days:
+                return 'O'
+            pos -= morning_off_days
+            if pos < afternoon_work_days:
+                return 'A'
+            pos -= afternoon_work_days
+            if pos < afternoon_off_days:
+                return 'O'
+            pos -= afternoon_off_days
+            if pos < night_work_days:
+                return 'N'
+            return 'O'
+
+        entries = []
+        for d in range(1, num_days + 1):
+            cur = date(year, month, d)
+            unavail = unavailability.get(cur, set())
+            for staff in all_staff:
+                shift = 'L' if staff.id in unavail else _rotation_shift(d, staff_phase[staff.id])
+                entries.append(PtechStaffEntry(roster=roster, staff=staff, date=cur, shift=shift))
+
+        PtechStaffEntry.objects.bulk_create(entries)
+        return
+
+    # Fixed-pool mode: each staff stays in their assigned shift pool
+    morning_id_set = {s.id for s in morning_staff}
+    afternoon_id_set = {s.id for s in afternoon_staff}
+    night_id_set = {s.id for s in cm_staff}
+
     def _cycle(work, off):
         return (work + off) if work > 0 else 0
 
@@ -177,7 +224,6 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
     a_cycle = _cycle(afternoon_work_days, afternoon_off_days)
     n_cycle = _cycle(night_work_days, night_off_days)
 
-    # Stagger offset per staff so coverage is continuous across the pool
     m_phase = {s.id: (i * morning_work_days) % m_cycle if m_cycle > 0 else 0
                for i, s in enumerate(morning_staff)}
     a_phase = {s.id: (i * afternoon_work_days) % a_cycle if a_cycle > 0 else 0
@@ -202,7 +248,6 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
                 if _in_work_phase(d, n_phase[staff.id], night_work_days, n_cycle):
                     shift = 'N'
                 else:
-                    # Night off-days: fall back to M/A assignment if also in those pools
                     if staff.id in morning_id_set:
                         shift = 'M' if _in_work_phase(d, m_phase[staff.id], morning_work_days, m_cycle) else 'O'
                     elif staff.id in afternoon_id_set:
