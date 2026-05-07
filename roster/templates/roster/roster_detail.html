@@ -88,6 +88,10 @@
             {{ roster.get_shift_config_display }}
           </span>
           {% endif %}
+          {% elif roster.roster_type == 'PHARM_SHIFT' %}
+          <span class="badge ms-2" style="background:#d1fae5;color:#065f46;font-size:.8rem;padding:5px 12px;border-radius:20px;">
+            <i class="fas fa-clock me-1"></i>Pharmacist Shift Roster
+          </span>
           {% else %}
           <span class="badge ms-2" style="background:#e8f0f7;color:#1B4F72;font-size:.8rem;padding:5px 12px;border-radius:20px;">
             <i class="fas fa-phone me-1"></i>Call Duty Roster

@@ -341,6 +341,74 @@ class RosterGenerateForm(forms.Form):
         label='Night: off days',
     )
 
+    # ── Pharmacist shift fields ───────────────────────────────────────────────
+    pharm_morning_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM').select_related('unit__department'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label='Morning (M) Staff — start on Morning shift',
+    )
+    pharm_afternoon_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM').select_related('unit__department'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label='Afternoon (A) Staff — start on Afternoon shift',
+    )
+    pharm_night_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM').select_related('unit__department'),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+        label='Night (N) Staff — start on Night shift',
+    )
+    pharm_rotate_shifts = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Rotate shifts (M↔A↔N cycle)',
+    )
+    pharm_active_shifts = forms.MultipleChoiceField(
+        choices=[('M', 'Morning (M)'), ('A', 'Afternoon (A)'), ('N', 'Night (N)')],
+        initial=['M', 'A', 'N'],
+        widget=forms.CheckboxSelectMultiple(),
+        required=True,
+        label='Shifts to include in roster',
+    )
+    pharm_morning_work_days = forms.IntegerField(
+        initial=5, min_value=1, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
+        label='Morning: work days',
+    )
+    pharm_morning_off_days = forms.IntegerField(
+        initial=2, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '30'}),
+        label='Morning: off days',
+    )
+    pharm_afternoon_work_days = forms.IntegerField(
+        initial=5, min_value=1, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
+        label='Afternoon: work days',
+    )
+    pharm_afternoon_off_days = forms.IntegerField(
+        initial=2, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '30'}),
+        label='Afternoon: off days',
+    )
+    pharm_night_work_days = forms.IntegerField(
+        initial=2, min_value=1, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),
+        label='Night: work days',
+    )
+    pharm_night_off_days = forms.IntegerField(
+        initial=5, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '0', 'max': '30'}),
+        label='Night: off days',
+    )
+    pharm_night_min_gap = forms.IntegerField(
+        initial=0, min_value=0, max_value=30, required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:80px'}),
+        label='Min days between Night assignments for same staff (0 = no restriction)',
+    )
+
     def clean(self):
         cleaned = super().clean()
         roster_type = cleaned.get('roster_type')
@@ -353,6 +421,15 @@ class RosterGenerateForm(forms.Form):
             afternoon = cleaned.get('ptech_afternoon_staff') or []
             cm = cleaned.get('ptech_cm_staff') or []
             if not morning and not afternoon and not cm:
+                raise ValidationError('Select at least one staff for Morning, Afternoon, or Night shift.')
+        elif roster_type == 'PHARM_SHIFT':
+            active_shifts = cleaned.get('pharm_active_shifts') or []
+            if not active_shifts:
+                raise ValidationError('Select at least one shift to include in the roster.')
+            morning = cleaned.get('pharm_morning_staff') or []
+            afternoon = cleaned.get('pharm_afternoon_staff') or []
+            night = cleaned.get('pharm_night_staff') or []
+            if not morning and not afternoon and not night:
                 raise ValidationError('Select at least one staff for Morning, Afternoon, or Night shift.')
         else:
             num_slots = int(cleaned.get('num_slots', 3))

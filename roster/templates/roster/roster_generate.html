@@ -298,6 +298,117 @@
         </div>
       </div>
 
+      <!-- Pharmacist shift configuration (shown when Pharmacist Shift selected) -->
+      <div class="section-card pharm-section" id="pharm-section" style="display:none;">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="mb-0"><i class="fas fa-clock me-2" style="color:#065f46;"></i>Pharmacist Shift Configuration</h6>
+          <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+            {{ form.pharm_rotate_shifts }}
+            <label class="form-check-label fw-semibold" for="{{ form.pharm_rotate_shifts.id_for_label }}" style="font-size:.88rem;">
+              Rotate Shifts
+            </label>
+          </div>
+        </div>
+        <div id="pharm-rotate-note" class="alert alert-info py-1 px-2 mb-3" style="font-size:.82rem; display:none;">
+          <i class="fas fa-sync-alt me-1"></i>
+          <strong>Rotation mode:</strong> All selected staff cycle through M&rarr;A&rarr;N shifts automatically.
+          Staff are staggered evenly so every shift has coverage at all times.
+        </div>
+
+        <!-- Shift selection -->
+        <div class="mb-3 pb-3 border-bottom" id="pharm-shift-select-row">
+          <label class="form-label fw-semibold">Shifts to include in this roster</label>
+          <div class="d-flex gap-4 flex-wrap">
+            {% for choice in form.pharm_active_shifts %}
+            <div class="form-check form-check-inline">
+              {{ choice.tag }}
+              <label class="form-check-label fw-semibold" for="{{ choice.id_for_label }}">
+                {{ choice.choice_label }}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          {% if form.pharm_active_shifts.errors %}
+          <div class="text-danger small mt-1">{{ form.pharm_active_shifts.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="row g-3" id="pharm-pools-row">
+          <div class="col-md-4" id="pharm-morning-col">
+            <label class="form-label fw-semibold" style="color:#1A5276;">
+              <span class="shift-badge shift-M-badge">M</span> Morning Staff
+            </label>
+            <div class="d-flex gap-2 align-items-center mb-2" style="font-size:.82rem; color:#4b5563;">
+              <i class="fas fa-sun me-1"></i>
+              <label for="{{ form.pharm_morning_work_days.id_for_label }}" class="mb-0">Work:</label>
+              {{ form.pharm_morning_work_days }}
+              <span>days &nbsp; Off:</span>
+              {{ form.pharm_morning_off_days }}
+              <span>days</span>
+            </div>
+            <div class="staff-checkbox-grid ptech-staff-grid" id="pharm-morning-grid">
+              {% for choice in form.pharm_morning_staff %}
+              <label data-staff-id="{{ choice.data.value }}">
+                {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if form.pharm_morning_staff.errors %}<div class="text-danger small mt-1">{{ form.pharm_morning_staff.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-4" id="pharm-afternoon-col">
+            <label class="form-label fw-semibold" style="color:#1E8449;">
+              <span class="shift-badge shift-A-badge">A</span> Afternoon Staff
+            </label>
+            <div class="d-flex gap-2 align-items-center mb-2" style="font-size:.82rem; color:#4b5563;">
+              <i class="fas fa-cloud-sun me-1"></i>
+              <label for="{{ form.pharm_afternoon_work_days.id_for_label }}" class="mb-0">Work:</label>
+              {{ form.pharm_afternoon_work_days }}
+              <span>days &nbsp; Off:</span>
+              {{ form.pharm_afternoon_off_days }}
+              <span>days</span>
+            </div>
+            <div class="staff-checkbox-grid ptech-staff-grid" id="pharm-afternoon-grid">
+              {% for choice in form.pharm_afternoon_staff %}
+              <label data-staff-id="{{ choice.data.value }}">
+                {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if form.pharm_afternoon_staff.errors %}<div class="text-danger small mt-1">{{ form.pharm_afternoon_staff.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-md-4" id="pharm-night-col">
+            <label class="form-label fw-semibold" style="color:#6C3483;">
+              <span class="shift-badge shift-N-badge">N</span> Night Staff
+            </label>
+            <div class="d-flex gap-2 align-items-center mb-2" style="font-size:.82rem; color:#4b5563;">
+              <i class="fas fa-moon me-1"></i>
+              <label for="{{ form.pharm_night_work_days.id_for_label }}" class="mb-0">Work:</label>
+              {{ form.pharm_night_work_days }}
+              <span>days &nbsp; Off:</span>
+              {{ form.pharm_night_off_days }}
+              <span>days</span>
+            </div>
+            <div class="staff-checkbox-grid ptech-staff-grid" id="pharm-night-grid">
+              {% for choice in form.pharm_night_staff %}
+              <label data-staff-id="{{ choice.data.value }}">
+                {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if form.pharm_night_staff.errors %}<div class="text-danger small mt-1">{{ form.pharm_night_staff.errors }}</div>{% endif %}
+          </div>
+        </div>{# end #pharm-pools-row #}
+
+        <div class="mt-3 pt-2 border-top">
+          <div class="min-gap-row">
+            <label for="{{ form.pharm_night_min_gap.id_for_label }}">{{ form.pharm_night_min_gap.label }}:</label>
+            {{ form.pharm_night_min_gap }}
+          </div>
+        </div>
+      </div>
+
       <!-- PTech shift configuration (shown when PTech selected) -->
       <div class="section-card ptech-section" id="ptech-section" style="display:none;">
         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -430,49 +541,56 @@
   const numSlotsWrapper = document.getElementById('num-slots-wrapper');
   const slotLabelsSection = document.getElementById('slot-labels-section');
   const ptechSection = document.getElementById('ptech-section');
-
-  // Identify call-only slot cards (Slot 1, 2, 3)
-  const callSlotCards = document.querySelectorAll('#slot1-card, #slot2-card, #slot3-card, .section-card:has(#slot1-staff-grid)');
+  const pharmSection = document.getElementById('pharm-section');
 
   const pageTitleSpan = document.querySelector('.topbar-title');
-
   const rosterTitleInput = document.getElementById('id_roster_title');
 
   function updateRosterType() {
     const selected = document.querySelector('[name="roster_type"]:checked');
     if (!selected) return;
     const isPTech = selected.value === 'PTECH';
-    const titleText = isPTech ? "PHARMACY TECHNICIAN'S DUTY ROSTER" : 'Generate Roster';
+    const isPharmShift = selected.value === 'PHARM_SHIFT';
+    const isShiftRoster = isPTech || isPharmShift;
+
+    const PTECH_TITLE = "PHARMACY TECHNICIAN'S DUTY ROSTER";
+    const PHARM_SHIFT_TITLE = "PHARMACISTS' SHIFT DUTY ROSTER";
+    const CALL_TITLE = "PHARMACISTS' CALL DUTY ROSTER";
+
+    let titleText = isPharmShift ? PHARM_SHIFT_TITLE : (isPTech ? PTECH_TITLE : 'Generate Roster');
     if (pageTitleSpan) pageTitleSpan.textContent = titleText;
     document.title = titleText;
+
     if (rosterTitleInput) {
-      const PTECH_TITLE = "PHARMACY TECHNICIAN'S DUTY ROSTER";
-      const CALL_TITLE  = "PHARMACISTS' CALL DUTY ROSTER";
       const cur = rosterTitleInput.value.trim();
       if (isPTech && cur !== PTECH_TITLE) {
         rosterTitleInput.value = PTECH_TITLE;
-      } else if (!isPTech && cur !== CALL_TITLE) {
+      } else if (isPharmShift && cur !== PHARM_SHIFT_TITLE) {
+        rosterTitleInput.value = PHARM_SHIFT_TITLE;
+      } else if (!isShiftRoster && cur !== CALL_TITLE) {
         rosterTitleInput.value = CALL_TITLE;
       }
     }
+
     const detailsHeading = document.getElementById('roster-details-heading');
-    if (detailsHeading) detailsHeading.textContent = isPTech ? "PHARMACY TECHNICIAN'S DUTY ROSTER" : 'Roster Details';
-    // PTech: show ptech section, hide call-specific sections
+    if (detailsHeading) detailsHeading.textContent = isPharmShift ? PHARM_SHIFT_TITLE : (isPTech ? PTECH_TITLE : 'Roster Details');
+
     ptechSection.style.display = isPTech ? '' : 'none';
-    numSlotsWrapper.style.display = isPTech ? 'none' : '';
-    if (slotLabelsSection) slotLabelsSection.style.display = isPTech ? 'none' : '';
-    // Hide/show slot 1/2/3 staff cards
+    pharmSection.style.display = isPharmShift ? '' : 'none';
+    numSlotsWrapper.style.display = isShiftRoster ? 'none' : '';
+    if (slotLabelsSection) slotLabelsSection.style.display = isShiftRoster ? 'none' : '';
+
     document.querySelectorAll('.section-card').forEach(card => {
-      if (card.id === 'ptech-section') return;
-      const hasSlotGrid = card.querySelector('[id$="-staff-grid"]:not([id^="ptech"])');
-      if (hasSlotGrid) card.style.display = isPTech ? 'none' : '';
+      if (card.id === 'ptech-section' || card.id === 'pharm-section') return;
+      const hasSlotGrid = card.querySelector('[id$="-staff-grid"]:not([id^="ptech"]):not([id^="pharm"])');
+      if (hasSlotGrid) card.style.display = isShiftRoster ? 'none' : '';
     });
-    if (!isPTech) updateLabels();
+    if (!isShiftRoster) updateLabels();
   }
 
   rosterTypeRadios.forEach(radio => radio.addEventListener('change', updateRosterType));
 
-  // Rotate-shifts toggle: show info note
+  // Rotate-shifts toggle: show info note (PTech)
   const rotateToggle = document.getElementById('{{ form.ptech_rotate_shifts.id_for_label }}') ||
                        document.querySelector('[name="ptech_rotate_shifts"]');
   const rotateNote   = document.getElementById('ptech-rotate-note');
@@ -483,6 +601,18 @@
   if (rotateToggle) {
     rotateToggle.addEventListener('change', updateRotateNote);
     updateRotateNote();
+  }
+
+  // Rotate-shifts toggle: show info note (Pharm)
+  const pharmRotateToggle = document.querySelector('[name="pharm_rotate_shifts"]');
+  const pharmRotateNote   = document.getElementById('pharm-rotate-note');
+  function updatePharmRotateNote() {
+    if (!pharmRotateNote || !pharmRotateToggle) return;
+    pharmRotateNote.style.display = pharmRotateToggle.checked ? '' : 'none';
+  }
+  if (pharmRotateToggle) {
+    pharmRotateToggle.addEventListener('change', updatePharmRotateNote);
+    updatePharmRotateNote();
   }
 
   // Initial toggle
@@ -610,5 +740,21 @@
   });
 
   updatePtechShiftCols();
+
+  // Pharm shift selection → show/hide pool columns
+  const pharmShiftColMap = { 'M': 'pharm-morning-col', 'A': 'pharm-afternoon-col', 'N': 'pharm-night-col' };
+
+  function updatePharmShiftCols() {
+    document.querySelectorAll('[name="pharm_active_shifts"]').forEach(cb => {
+      const col = document.getElementById(pharmShiftColMap[cb.value]);
+      if (col) col.style.display = cb.checked ? '' : 'none';
+    });
+  }
+
+  document.querySelectorAll('[name="pharm_active_shifts"]').forEach(cb => {
+    cb.addEventListener('change', updatePharmShiftCols);
+  });
+
+  updatePharmShiftCols();
 </script>
 {% endblock %}

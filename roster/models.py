@@ -89,6 +89,7 @@ MONTH_CHOICES = [(i, calendar.month_name[i]) for i in range(1, 13)]
 ROSTER_TYPE_CHOICES = [
     ('CALL', 'Call Duty Roster'),
     ('PTECH', 'PTech Shift Roster'),
+    ('PHARM_SHIFT', 'Pharmacist Shift Roster'),
 ]
 
 PTECH_SHIFT_CHOICES = [
@@ -121,7 +122,7 @@ class Roster(models.Model):
     roster_title = models.CharField(max_length=200, default="PHARMACISTS' CALL DUTY ROSTER")
     month = models.IntegerField(choices=MONTH_CHOICES, db_index=True)
     year = models.IntegerField(db_index=True)
-    roster_type = models.CharField(max_length=10, choices=ROSTER_TYPE_CHOICES, default='CALL', db_index=True)
+    roster_type = models.CharField(max_length=11, choices=ROSTER_TYPE_CHOICES, default='CALL', db_index=True)
     shift_config = models.CharField(max_length=10, choices=PTECH_SHIFT_CONFIG_CHOICES, blank=True, null=True, help_text='Required for PTech rosters')
     num_slots = models.IntegerField(default=3, choices=[(1, '1 Slot'), (2, '2 Slots'), (3, '3 Slots')])
     slot1_label = models.CharField(max_length=100, default='FIRST ON CALL')

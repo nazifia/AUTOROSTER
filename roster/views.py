@@ -346,7 +346,7 @@ def roster_detail(request, pk):
     staff_type_filter = 'PTECH' if roster.roster_type == 'PTECH' else 'PHARM'
     all_staff = Staff.objects.filter(unit=roster.unit, is_active=True, staff_type=staff_type_filter)
 
-    if roster.roster_type == 'PTECH':
+    if roster.roster_type in ('PTECH', 'PHARM_SHIFT'):
         _, num_days = calendar.monthrange(roster.year, roster.month)
         from datetime import date as date_cls
         ptech_dates = [date_cls(roster.year, roster.month, d) for d in range(1, num_days + 1)]
@@ -375,6 +375,7 @@ def roster_detail(request, pk):
             'is_ptech': True,
             'ptech_rows': ptech_rows,
             'ptech_dates': ptech_dates,
+            'is_pharm_shift': roster.roster_type == 'PHARM_SHIFT',
         })
 
     entries = roster.entries.select_related('slot1', 'slot2', 'slot3').order_by('date')
@@ -408,7 +409,7 @@ def roster_generate(request):
             'roster_type': cd['roster_type'],
         }
 
-        if cd['roster_type'] == 'PTECH':
+        if cd['roster_type'] in ('PTECH', 'PHARM_SHIFT'):
             roster_data['num_slots'] = 1
             roster_data['slot1_label'] = 'MORNING'
             roster_data['slot2_label'] = 'AFTERNOON'
@@ -437,6 +438,23 @@ def roster_generate(request):
                 night_work_days=int(cd.get('ptech_night_work_days') or 2),
                 night_off_days=int(cd.get('ptech_night_off_days') or 5),
                 active_shifts=cd.get('ptech_active_shifts') or ['M', 'A', 'N'],
+            )
+        elif cd['roster_type'] == 'PHARM_SHIFT':
+            generate_ptech_roster_entries(
+                roster,
+                morning_staff=cd.get('pharm_morning_staff') or [],
+                afternoon_staff=cd.get('pharm_afternoon_staff') or [],
+                cm_staff=cd.get('pharm_night_staff') or [],
+                post_cm_rest_days=0,
+                rotate_shifts=bool(cd.get('pharm_rotate_shifts')),
+                cm_min_gap=int(cd.get('pharm_night_min_gap') or 0),
+                morning_work_days=int(cd.get('pharm_morning_work_days') or 5),
+                morning_off_days=int(cd.get('pharm_morning_off_days') or 2),
+                afternoon_work_days=int(cd.get('pharm_afternoon_work_days') or 5),
+                afternoon_off_days=int(cd.get('pharm_afternoon_off_days') or 2),
+                night_work_days=int(cd.get('pharm_night_work_days') or 2),
+                night_off_days=int(cd.get('pharm_night_off_days') or 5),
+                active_shifts=cd.get('pharm_active_shifts') or ['M', 'A', 'N'],
             )
         else:
             generate_roster_entries(
@@ -477,7 +495,7 @@ def roster_delete(request, pk):
 @login_required
 def roster_export(request, pk):
     roster = get_object_or_404(Roster, pk=pk)
-    if roster.roster_type == 'PTECH':
+    if roster.roster_type in ('PTECH', 'PHARM_SHIFT'):
         xlsx = export_ptech_to_excel(roster)
     else:
         xlsx = export_roster_to_excel(roster)
