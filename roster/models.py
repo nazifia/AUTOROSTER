@@ -11,6 +11,15 @@ class Hospital(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        if self.name:
+            qs = Hospital.objects.filter(name__iexact=self.name)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError({'name': 'A hospital with this name already exists.'})
+
     class Meta:
         ordering = ['name']
 
@@ -22,8 +31,21 @@ class Department(models.Model):
     def __str__(self):
         return f"{self.hospital.name} / {self.department_name}"
 
+    def clean(self):
+        super().clean()
+        if self.hospital_id and self.department_name:
+            qs = Department.objects.filter(
+                hospital_id=self.hospital_id,
+                department_name__iexact=self.department_name,
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError({'department_name': 'This department already exists in the selected hospital.'})
+
     class Meta:
         ordering = ['hospital__name', 'department_name']
+        unique_together = ['hospital', 'department_name']
 
 
 class Unit(models.Model):
@@ -33,8 +55,21 @@ class Unit(models.Model):
     def __str__(self):
         return f"{self.department.department_name} — {self.unit_name}"
 
+    def clean(self):
+        super().clean()
+        if self.department_id and self.unit_name:
+            qs = Unit.objects.filter(
+                department_id=self.department_id,
+                unit_name__iexact=self.unit_name,
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError({'unit_name': 'This unit already exists in the selected department.'})
+
     class Meta:
         ordering = ['department__department_name', 'unit_name']
+        unique_together = ['department', 'unit_name']
 
 
 STAFF_TYPE_CHOICES = [
