@@ -1,0 +1,79 @@
+{% extends 'roster/base.html' %}
+{% block title %}Manage Activity Log Access{% endblock %}
+{% block page_title %}Activity Log Access{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff; border-bottom:2px solid #e8f0f7;">
+    <span style="color:#1B4F72;"><i class="fas fa-user-shield me-2"></i>Activity Log Access Control</span>
+    <span class="text-muted" style="font-size:.8rem;">{{ users|length }} user(s)</span>
+  </div>
+
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr style="background:#f8fafc;">
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">USERNAME</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">EMAIL</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">ROLE</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">LOG ACCESS</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td style="font-weight:500;">{{ u.username }}</td>
+          <td style="font-size:.875rem;color:#6b7280;">{{ u.email|default:"—" }}</td>
+          <td>
+            {% if u.is_superuser %}
+              <span class="badge" style="background:#ede9fe;color:#5b21b6;">Superuser</span>
+            {% elif u.is_staff %}
+              <span class="badge" style="background:#dbeafe;color:#1e40af;">Staff</span>
+            {% else %}
+              <span class="badge" style="background:#f3f4f6;color:#374151;">User</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_superuser or u.is_staff %}
+              <span class="badge" style="background:#d1fae5;color:#065f46;"><i class="fas fa-check me-1"></i>Always</span>
+            {% elif u.pk in users_with_access %}
+              <span class="badge" style="background:#d1fae5;color:#065f46;"><i class="fas fa-check me-1"></i>Granted</span>
+            {% else %}
+              <span class="badge" style="background:#fee2e2;color:#991b1b;"><i class="fas fa-times me-1"></i>No Access</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_superuser or u.is_staff %}
+              <span class="text-muted" style="font-size:.8rem;">N/A</span>
+            {% elif u.pk in users_with_access %}
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" value="{{ u.pk }}">
+                <input type="hidden" name="action" value="revoke">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  <i class="fas fa-ban me-1"></i>Revoke
+                </button>
+              </form>
+            {% else %}
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" value="{{ u.pk }}">
+                <input type="hidden" name="action" value="grant">
+                <button type="submit" class="btn btn-sm btn-success">
+                  <i class="fas fa-key me-1"></i>Grant Access
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-4 text-muted">No users found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

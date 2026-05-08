@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.core.exceptions import ValidationError
 import calendar
@@ -193,4 +194,40 @@ class PtechStaffEntry(models.Model):
         indexes = [
             models.Index(fields=['roster', 'date']),
             models.Index(fields=['roster', 'staff']),
+        ]
+
+
+ACTION_CHOICES = [
+    ('created', 'Created'),
+    ('updated', 'Updated'),
+    ('deleted', 'Deleted'),
+    ('generated', 'Generated'),
+    ('exported', 'Exported'),
+]
+
+
+class ActivityLog(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='activity_logs',
+        db_index=True,
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, db_index=True)
+    object_type = models.CharField(max_length=50, db_index=True)
+    object_str = models.CharField(max_length=300)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        user_str = str(self.user) if self.user else 'Unknown'
+        return f"{user_str} {self.action} {self.object_type}: {self.object_str}"
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp']),
+        ]
+        permissions = [
+            ('can_view_activity_log', 'Can view activity log'),
         ]

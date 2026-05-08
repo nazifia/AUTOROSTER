@@ -49,6 +49,44 @@
   </div>
 </div>
 
+<div class="row g-3 mb-3">
+  <!-- Recent Activity -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff; border-bottom:2px solid #e8f0f7;">
+        <span style="color:#1B4F72;"><i class="fas fa-history me-2"></i>Recent Activity</span>
+        <a href="{% url 'activity_log' %}" class="btn btn-outline-primary btn-sm">View All</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_activity %}
+        <table class="table table-hover mb-0">
+          <tbody>
+            {% for log in recent_activity %}
+            <tr>
+              <td style="width:130px;font-size:.78rem;color:#6b7280;white-space:nowrap;padding:8px 16px;">{{ log.timestamp|date:"d M H:i" }}</td>
+              <td style="width:140px;font-size:.875rem;font-weight:500;padding:8px 10px;">{{ log.user|default:"—" }}</td>
+              <td style="width:90px;padding:8px 10px;">
+                {% if log.action == 'created' %}<span class="badge" style="background:#d1fae5;color:#065f46;">Created</span>
+                {% elif log.action == 'updated' %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Updated</span>
+                {% elif log.action == 'deleted' %}<span class="badge" style="background:#fee2e2;color:#991b1b;">Deleted</span>
+                {% elif log.action == 'generated' %}<span class="badge" style="background:#ede9fe;color:#5b21b6;">Generated</span>
+                {% elif log.action == 'exported' %}<span class="badge" style="background:#fef3c7;color:#92400e;">Exported</span>
+                {% else %}<span class="badge bg-secondary">{{ log.action }}</span>{% endif %}
+              </td>
+              <td style="font-size:.8rem;color:#1B4F72;padding:8px 10px;">{{ log.object_type }}</td>
+              <td style="font-size:.875rem;padding:8px 16px;">{{ log.object_str|truncatechars:60 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-3 text-muted"><small>No activity yet.</small></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-3">
   <!-- Recent Rosters -->
   <div class="col-md-7">

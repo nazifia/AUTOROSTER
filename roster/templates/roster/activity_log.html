@@ -1,0 +1,98 @@
+{% extends 'roster/base.html' %}
+{% block title %}Activity Log{% endblock %}
+{% block page_title %}Activity Log{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between" style="background:#fff; border-bottom:2px solid #e8f0f7;">
+    <span style="color:#1B4F72;"><i class="fas fa-history me-2"></i>User Activity Log</span>
+    <span class="text-muted" style="font-size:.8rem;">{{ page_obj.paginator.count }} total entries</span>
+  </div>
+
+  <!-- Filters -->
+  <div class="card-body border-bottom py-2">
+    <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+      <select name="action" class="form-select form-select-sm" style="width:auto;">
+        <option value="">All Actions</option>
+        <option value="created" {% if action_filter == 'created' %}selected{% endif %}>Created</option>
+        <option value="updated" {% if action_filter == 'updated' %}selected{% endif %}>Updated</option>
+        <option value="deleted" {% if action_filter == 'deleted' %}selected{% endif %}>Deleted</option>
+        <option value="generated" {% if action_filter == 'generated' %}selected{% endif %}>Generated</option>
+        <option value="exported" {% if action_filter == 'exported' %}selected{% endif %}>Exported</option>
+      </select>
+      <select name="object_type" class="form-select form-select-sm" style="width:auto;">
+        <option value="">All Types</option>
+        {% for ot in object_types %}
+        <option value="{{ ot }}" {% if object_filter == ot %}selected{% endif %}>{{ ot }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+      {% if action_filter or object_filter %}
+      <a href="{% url 'activity_log' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card-body p-0">
+    {% if page_obj %}
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr style="background:#f8fafc;">
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">TIME</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">USER</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">ACTION</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">TYPE</th>
+          <th style="font-size:.75rem;color:#6b7280;font-weight:600;padding:10px 16px;">OBJECT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in page_obj %}
+        <tr>
+          <td style="font-size:.8rem;color:#6b7280;white-space:nowrap;">{{ log.timestamp|date:"d M Y H:i" }}</td>
+          <td style="font-size:.875rem;font-weight:500;">{{ log.user|default:"—" }}</td>
+          <td>
+            {% if log.action == 'created' %}
+              <span class="badge" style="background:#d1fae5;color:#065f46;">Created</span>
+            {% elif log.action == 'updated' %}
+              <span class="badge" style="background:#dbeafe;color:#1e40af;">Updated</span>
+            {% elif log.action == 'deleted' %}
+              <span class="badge" style="background:#fee2e2;color:#991b1b;">Deleted</span>
+            {% elif log.action == 'generated' %}
+              <span class="badge" style="background:#ede9fe;color:#5b21b6;">Generated</span>
+            {% elif log.action == 'exported' %}
+              <span class="badge" style="background:#fef3c7;color:#92400e;">Exported</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ log.action }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.875rem;color:#1B4F72;">{{ log.object_type }}</td>
+          <td style="font-size:.875rem;">{{ log.object_str|truncatechars:60 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-history fa-3x mb-3 opacity-25"></i>
+      <p>No activity recorded yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div class="card-footer d-flex justify-content-center">
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&action={{ action_filter }}&object_type={{ object_filter }}">«</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&action={{ action_filter }}&object_type={{ object_filter }}">»</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

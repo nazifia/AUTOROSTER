@@ -247,6 +247,18 @@
     <a href="{% url 'roster_list' %}" class="nav-link {% if request.resolver_match.url_name == 'roster_list' %}active{% endif %}">
       <i class="fas fa-list-alt"></i> All Rosters
     </a>
+
+    <div class="nav-section-label mt-2">System</div>
+    {% if request.user.is_superuser or request.user.is_staff or perms.roster.can_view_activity_log %}
+    <a href="{% url 'activity_log' %}" class="nav-link {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}">
+      <i class="fas fa-history"></i> Activity Log
+    </a>
+    {% endif %}
+    {% if request.user.is_superuser or request.user.is_staff %}
+    <a href="{% url 'manage_activity_log_access' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_activity_log_access' %}active{% endif %}">
+      <i class="fas fa-user-shield"></i> Log Access
+    </a>
+    {% endif %}
   </div>
 
   <div class="sidebar-footer">

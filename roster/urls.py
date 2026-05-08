@@ -41,6 +41,10 @@ urlpatterns = [
     path('entries/<int:pk>/update/', views.entry_update, name='entry_update'),
     path('ptech-entries/<int:pk>/update/', views.ptech_entry_update, name='ptech_entry_update'),
 
+    # Activity Log
+    path('activity/', views.activity_log, name='activity_log'),
+    path('activity/access/', views.manage_activity_log_access, name='manage_activity_log_access'),
+
     # API
     path('api/units/<int:dept_id>/', views.staff_by_department, name='units_by_department'),
     path('api/staff-unit/<int:unit_id>/', views.staff_by_unit, name='staff_by_unit'),
