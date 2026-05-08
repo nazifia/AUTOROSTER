@@ -7,6 +7,7 @@ urlpatterns = [
     # Hospitals
     path('hospitals/', views.hospital_list, name='hospital_list'),
     path('hospitals/add/', views.hospital_create, name='hospital_create'),
+    path('hospitals/<int:pk>/', views.hospital_detail, name='hospital_detail'),
     path('hospitals/<int:pk>/edit/', views.hospital_edit, name='hospital_edit'),
     path('hospitals/<int:pk>/delete/', views.hospital_delete, name='hospital_delete'),
 

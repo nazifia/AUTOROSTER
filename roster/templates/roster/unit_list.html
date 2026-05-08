@@ -3,9 +3,11 @@
 {% block page_title %}Units{% endblock %}
 
 {% block topbar_actions %}
+  {% if request.user.is_staff or request.user.is_superuser %}
   <a href="{% url 'unit_create' %}" class="btn btn-primary btn-sm">
     <i class="fas fa-plus me-1"></i> Add Unit
   </a>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -53,6 +55,7 @@
               <br><small class="text-muted" style="font-size:.75rem;">{{ unit.department.hospital.name|truncatechars:30 }}</small>
             </div>
           </div>
+          {% if request.user.is_staff or request.user.is_superuser %}
           <div class="dropdown">
             <button class="btn btn-sm btn-light" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -60,6 +63,7 @@
               <li><a class="dropdown-item text-danger" href="{% url 'unit_delete' unit.pk %}"><i class="fas fa-trash me-2"></i>Delete</a></li>
             </ul>
           </div>
+          {% endif %}
         </div>
         <div class="d-flex gap-3">
           <div class="text-center">

@@ -1,4 +1,5 @@
 import calendar
+import functools
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -25,6 +26,17 @@ def log_activity(request, action, object_type, object_str):
         object_type=object_type,
         object_str=str(object_str)[:300],
     )
+
+
+def admin_required(view_func):
+    @functools.wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not (request.user.is_superuser or request.user.is_staff):
+            messages.error(request, 'Admin access required.')
+            return redirect('dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -119,7 +131,7 @@ def hospital_list(request):
     return render(request, 'roster/hospital_list.html', {'page_obj': page_obj})
 
 
-@login_required
+@admin_required
 def hospital_create(request):
     form = HospitalForm(request.POST or None)
     if form.is_valid():
@@ -130,7 +142,7 @@ def hospital_create(request):
     return render(request, 'roster/hospital_form.html', {'form': form, 'title': 'Add Hospital'})
 
 
-@login_required
+@admin_required
 def hospital_edit(request, pk):
     hospital = get_object_or_404(Hospital, pk=pk)
     form = HospitalForm(request.POST or None, instance=hospital)
@@ -142,7 +154,7 @@ def hospital_edit(request, pk):
     return render(request, 'roster/hospital_form.html', {'form': form, 'title': 'Edit Hospital', 'obj': hospital})
 
 
-@login_required
+@admin_required
 def hospital_delete(request, pk):
     hospital = get_object_or_404(Hospital, pk=pk)
     if request.method == 'POST':
@@ -151,6 +163,19 @@ def hospital_delete(request, pk):
         messages.success(request, 'Hospital deleted.')
         return redirect('hospital_list')
     return render(request, 'roster/confirm_delete.html', {'obj': hospital, 'obj_type': 'Hospital'})
+
+
+@login_required
+def hospital_detail(request, pk):
+    hospital = get_object_or_404(Hospital, pk=pk)
+    departments = hospital.departments.prefetch_related('units__staff').annotate(
+        unit_count=Count('units'),
+        staff_count=Count('units__staff', filter=Q(units__staff__is_active=True), distinct=True),
+    )
+    return render(request, 'roster/hospital_detail.html', {
+        'hospital': hospital,
+        'departments': departments,
+    })
 
 
 # ── Department ────────────────────────────────────────────────────────────────
@@ -174,7 +199,7 @@ def department_list(request):
     })
 
 
-@login_required
+@admin_required
 def department_create(request):
     hospital_id = request.GET.get('hospital')
     form = DepartmentForm(request.POST or None, hospital_id=hospital_id)
@@ -186,7 +211,7 @@ def department_create(request):
     return render(request, 'roster/department_form.html', {'form': form, 'title': 'Add Department'})
 
 
-@login_required
+@admin_required
 def department_edit(request, pk):
     dept = get_object_or_404(Department, pk=pk)
     form = DepartmentForm(request.POST or None, instance=dept)
@@ -198,7 +223,7 @@ def department_edit(request, pk):
     return render(request, 'roster/department_form.html', {'form': form, 'title': 'Edit Department', 'obj': dept})
 
 
-@login_required
+@admin_required
 def department_delete(request, pk):
     dept = get_object_or_404(Department, pk=pk)
     if request.method == 'POST':
@@ -237,7 +262,7 @@ def unit_list(request):
     })
 
 
-@login_required
+@admin_required
 def unit_create(request):
     dept_id = request.GET.get('dept')
     form = UnitForm(request.POST or None, department_id=dept_id)
@@ -249,7 +274,7 @@ def unit_create(request):
     return render(request, 'roster/unit_form.html', {'form': form, 'title': 'Add Unit'})
 
 
-@login_required
+@admin_required
 def unit_edit(request, pk):
     unit = get_object_or_404(Unit, pk=pk)
     form = UnitForm(request.POST or None, instance=unit)
@@ -261,7 +286,7 @@ def unit_edit(request, pk):
     return render(request, 'roster/unit_form.html', {'form': form, 'title': 'Edit Unit', 'obj': unit})
 
 
-@login_required
+@admin_required
 def unit_delete(request, pk):
     unit = get_object_or_404(Unit, pk=pk)
     if request.method == 'POST':
