@@ -34,7 +34,9 @@
       "Bash(python -c \"from datetime import date; d = date\\(2026,5,1\\); print\\(d.weekday\\(\\)\\)\")",
       "Bash(python -c \"import roster.views; print\\('views OK'\\)\")",
       "Bash(python manage.py shell -c \"from roster.forms import RosterGenerateForm; print\\('forms OK'\\)\")",
-      "Bash(pip freeze *)"
+      "Bash(pip freeze *)",
+      "Bash(venv\\\\Scripts\\\\python.exe manage.py migrate roster)",
+      "Bash(python manage.py makemigrations roster --name=\"activitylog_view_permission\")"
     ]
   }
 }

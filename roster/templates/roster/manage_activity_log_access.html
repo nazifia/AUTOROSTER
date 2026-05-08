@@ -23,7 +23,7 @@
       <tbody>
         {% for u in users %}
         <tr>
-          <td style="font-weight:500;">{{ u.username }}</td>
+          <td style="font-weight:500;">{{ u.full_name|default:u.phone_number }}</td>
           <td style="font-size:.875rem;color:#6b7280;">{{ u.email|default:"—" }}</td>
           <td>
             {% if u.is_superuser %}
