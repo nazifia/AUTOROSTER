@@ -125,7 +125,7 @@ def hospital_list(request):
     hospitals = Hospital.objects.annotate(
         dept_count=Count('departments'),
         staff_count=Count('departments__units__staff', distinct=True),
-    )
+    ).order_by('name')
     paginator = Paginator(hospitals, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'roster/hospital_list.html', {'page_obj': page_obj})
@@ -186,7 +186,7 @@ def department_list(request):
     departments = Department.objects.select_related('hospital').prefetch_related('units').annotate(
         unit_count=Count('units'),
         staff_count=Count('units__staff', filter=Q(units__staff__is_active=True), distinct=True),
-    )
+    ).order_by('hospital__name', 'department_name')
     hospitals = Hospital.objects.all()
     if hospital_id:
         departments = departments.filter(hospital_id=hospital_id)
@@ -243,7 +243,7 @@ def unit_list(request):
     units = Unit.objects.select_related('department__hospital').prefetch_related('staff').annotate(
         staff_count=Count('staff', filter=Q(staff__is_active=True), distinct=True),
         roster_count=Count('rosters'),
-    )
+    ).order_by('department__hospital__name', 'unit_name')
     hospitals = Hospital.objects.all()
     departments = Department.objects.select_related('hospital').all()
     if hospital_id:
@@ -445,7 +445,7 @@ def roster_list(request):
     rosters = Roster.objects.select_related('unit__department__hospital').annotate(
         entries_count=Count('entries', distinct=True),
         ptech_entries_count=Count('ptech_entries', distinct=True),
-    )
+    ).order_by('-year', '-month')
     paginator = Paginator(rosters, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'roster/roster_list.html', {'page_obj': page_obj})

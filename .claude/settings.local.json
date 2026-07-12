@@ -36,7 +36,14 @@
       "Bash(python manage.py shell -c \"from roster.forms import RosterGenerateForm; print\\('forms OK'\\)\")",
       "Bash(pip freeze *)",
       "Bash(venv\\\\Scripts\\\\python.exe manage.py migrate roster)",
-      "Bash(python manage.py makemigrations roster --name=\"activitylog_view_permission\")"
+      "Bash(python manage.py makemigrations roster --name=\"activitylog_view_permission\")",
+      "Bash(python manage.py makemigrations roster --name=\"add_unique_together_department_unit\")",
+      "PowerShell(python manage.py test roster.tests_endpoints -v 1)",
+      "PowerShell(python manage.py test roster -v 1)",
+      "PowerShell(& venv\\\\Scripts\\\\python.exe manage.py test roster.tests_endpoints -v 1)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Add dedup migration, list ordering, and endpoint tests *)",
+      "Bash(git push *)"
     ]
   }
 }

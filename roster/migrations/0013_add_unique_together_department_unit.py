@@ -3,6 +3,33 @@
 from django.db import migrations
 
 
+def dedup_departments(apps, schema_editor):
+    Department = apps.get_model('roster', 'Department')
+    seen = {}
+    for dept in Department.objects.order_by('id'):
+        key = (dept.hospital_id, dept.department_name.upper())
+        if key in seen:
+            # reassign units to the keeper, then delete duplicate
+            Unit = apps.get_model('roster', 'Unit')
+            Unit.objects.filter(department=dept).update(department=seen[key])
+            dept.delete()
+        else:
+            seen[key] = dept
+
+
+def dedup_units(apps, schema_editor):
+    Unit = apps.get_model('roster', 'Unit')
+    Staff = apps.get_model('roster', 'Staff')
+    seen = {}
+    for unit in Unit.objects.order_by('id'):
+        key = (unit.department_id, unit.unit_name.upper())
+        if key in seen:
+            Staff.objects.filter(unit=unit).update(unit=seen[key])
+            unit.delete()
+        else:
+            seen[key] = unit
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +37,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(dedup_departments, migrations.RunPython.noop),
+        migrations.RunPython(dedup_units, migrations.RunPython.noop),
         migrations.AlterUniqueTogether(
             name='department',
             unique_together={('hospital', 'department_name')},
