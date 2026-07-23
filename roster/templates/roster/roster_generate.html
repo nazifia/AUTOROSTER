@@ -29,6 +29,9 @@
     border: 1px solid #e2e8f0;
     transition: all 0.15s;
   }
+  #slot1-staff-grid { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 900px) { #slot1-staff-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { #slot1-staff-grid { grid-template-columns: 1fr; } }
   .staff-checkbox-grid label:hover { border-color: #2E86C1; background: #e8f4fd; }
   .staff-checkbox-grid input:checked + span { color: #1B4F72; font-weight: 600; }
   .staff-checkbox-grid label:has(input:checked) { border-color: #2E86C1; background: #dbeafe; }
