@@ -153,10 +153,15 @@
         <div class="mb-3">
           <label class="form-label">Staff Pool <small class="text-muted">(select staff to include in this slot)</small></label>
           <p class="staff-hint">Select a unit above to highlight that unit's staff.</p>
+          <p class="staff-hint">Set a number to cap how many times that staff appears in this slot; leave blank for unlimited.</p>
           <div class="staff-checkbox-grid" id="slot1-staff-grid">
             {% for choice in form.slot1_staff %}
             <label data-staff-id="{{ choice.data.value }}">
               {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              <input type="number" min="1" name="slot1_count_{{ choice.data.value }}"
+                     class="slot1-count-input" placeholder="∞"
+                     title="Max times in first-on-call (blank = unlimited)"
+                     style="width:50px; margin-left:auto; font-size:.78rem; padding:1px 4px;">
             </label>
             {% endfor %}
           </div>

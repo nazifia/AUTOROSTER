@@ -43,7 +43,10 @@
       "PowerShell(& venv\\\\Scripts\\\\python.exe manage.py test roster.tests_endpoints -v 1)",
       "Bash(git add *)",
       "Bash(git commit -m 'Add dedup migration, list ordering, and endpoint tests *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "PowerShell(rtk git *)",
+      "PowerShell(git *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

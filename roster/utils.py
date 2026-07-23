@@ -46,14 +46,22 @@ def _resolve_active_days(days_pattern, custom_days):
     return {0, 1, 2, 3, 4, 5, 6}
 
 
-def _pick(pool, idx, unavailable_ids, recently_assigned, current_day, min_gap, mode):
-    """Pick next available staff; return (staff_or_None, new_idx)."""
+def _pick(pool, idx, unavailable_ids, recently_assigned, current_day, min_gap, mode,
+          quota=None, used_counts=None):
+    """Pick next available staff; return (staff_or_None, new_idx).
+
+    quota: {staff_id: max appearances}. Staff at or over their cap are skipped.
+    """
     if not pool:
         return None, idx
 
     def eligible(s):
         if s.id in unavailable_ids:
             return False
+        if quota and used_counts is not None:
+            cap = quota.get(s.id)
+            if cap is not None and used_counts.get(s.id, 0) >= cap:
+                return False
         if min_gap and min_gap > 0:
             last = recently_assigned.get(s.id)
             if last is not None and (current_day - last) < min_gap:
@@ -77,7 +85,8 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
                             slot1_mode='rotate', slot2_mode='rotate', slot3_mode='rotate',
                             slot1_days_pattern='all', slot1_custom_days=None, slot1_min_gap=0,
                             slot2_days_pattern='all', slot2_custom_days=None, slot2_min_gap=0,
-                            slot3_days_pattern='all', slot3_custom_days=None, slot3_min_gap=0):
+                            slot3_days_pattern='all', slot3_custom_days=None, slot3_min_gap=0,
+                            slot1_quota=None):
     """
     Generate RosterEntry objects for every day in the roster's month/year.
     Respects StaffAvailability, days patterns, and min-gap constraints.
@@ -102,6 +111,9 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
     s2_min_gap = int(slot2_min_gap or 0)
     s3_min_gap = int(slot3_min_gap or 0)
 
+    s1_quota = slot1_quota or {}
+    s1_used = {}
+
     s1_idx = s2_idx = s3_idx = 0
     s1_last = {}
     s2_last = {}
@@ -116,9 +128,11 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
         s1 = s2 = s3 = None
 
         if s1_pool and weekday in s1_active:
-            s1, s1_idx = _pick(s1_pool, s1_idx, unavail, s1_last, day, s1_min_gap, slot1_mode)
+            s1, s1_idx = _pick(s1_pool, s1_idx, unavail, s1_last, day, s1_min_gap, slot1_mode,
+                               quota=s1_quota, used_counts=s1_used)
             if s1:
                 s1_last[s1.id] = day
+                s1_used[s1.id] = s1_used.get(s1.id, 0) + 1
 
         if s2_pool and roster.num_slots >= 2 and weekday in s2_active:
             s2, s2_idx = _pick(s2_pool, s2_idx, unavail, s2_last, day, s2_min_gap, slot2_mode)

@@ -568,6 +568,13 @@ def roster_generate(request):
                 active_shifts=cd.get('pharm_active_shifts') or ['M', 'A', 'N'],
             )
         else:
+            # Per-staff cap on first-on-call (slot1) appearances; blank = unlimited
+            slot1_quota = {}
+            for s in cd['slot1_staff']:
+                raw = (request.POST.get(f'slot1_count_{s.id}') or '').strip()
+                if raw.isdigit() and int(raw) > 0:
+                    slot1_quota[s.id] = int(raw)
+
             generate_roster_entries(
                 roster,
                 slot1_staff=cd['slot1_staff'],
@@ -585,6 +592,7 @@ def roster_generate(request):
                 slot3_days_pattern=cd.get('slot3_days_pattern', 'all'),
                 slot3_custom_days=cd.get('slot3_custom_days') or [],
                 slot3_min_gap=cd.get('slot3_min_gap') or 0,
+                slot1_quota=slot1_quota,
             )
 
         log_activity(request, 'generated', 'Roster', roster)
