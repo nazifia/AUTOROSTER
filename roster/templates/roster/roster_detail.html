@@ -295,6 +295,39 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Staff contact list -->
+<div class="card mt-4">
+  <div class="card-header" style="background:#fff;border-bottom:2px solid #e8f0f7;">
+    <span style="font-weight:600;color:#1B4F72;"><i class="fas fa-address-book me-2"></i>Staff Contacts</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="roster-view-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Staff</th>
+            <th style="width:200px;">Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in all_staff %}
+          <tr>
+            <td class="staff-cell" style="text-align:left;">{{ s.display_name }}</td>
+            <td>
+              {% if s.phone_number %}
+                <a href="tel:{{ s.phone_number }}">{{ s.phone_number }}</a>
+              {% else %}<span class="empty-cell">—</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="empty-cell">No staff assigned to this unit.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

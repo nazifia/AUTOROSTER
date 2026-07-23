@@ -46,7 +46,8 @@
       "Bash(git push *)",
       "PowerShell(rtk git *)",
       "PowerShell(git *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(python *)"
     ]
   }
 }

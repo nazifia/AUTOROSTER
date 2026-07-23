@@ -1,5 +1,6 @@
 import calendar
 import functools
+from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -510,6 +511,23 @@ def roster_generate(request):
         year = int(cd['year'])
         num_slots = int(cd['num_slots'])
 
+        def collect_start_dates(pairs):
+            """{staff_id: earliest in-month start date} from `<prefix>_start_<id>` POST fields."""
+            out = {}
+            for prefix, pool in pairs:
+                for s in pool or []:
+                    raw = (request.POST.get(f'{prefix}_start_{s.id}') or '').strip()
+                    if not raw:
+                        continue
+                    try:
+                        sd = date.fromisoformat(raw)
+                    except ValueError:
+                        continue
+                    if sd.month == month and sd.year == year:  # only mid-month starts matter
+                        if s.id not in out or sd < out[s.id]:
+                            out[s.id] = sd
+            return out
+
         Roster.objects.filter(unit=unit, month=month, year=year).delete()
 
         roster_data = {
@@ -539,6 +557,11 @@ def roster_generate(request):
                 morning_staff=cd.get('ptech_morning_staff') or [],
                 afternoon_staff=cd.get('ptech_afternoon_staff') or [],
                 cm_staff=cd.get('ptech_cm_staff') or [],
+                staff_start_dates=collect_start_dates((
+                    ('ptech_morning', cd.get('ptech_morning_staff')),
+                    ('ptech_afternoon', cd.get('ptech_afternoon_staff')),
+                    ('ptech_cm', cd.get('ptech_cm_staff')),
+                )),
                 post_cm_rest_days=int(cd.get('ptech_post_cm_rest') or 0),
                 rotate_shifts=bool(cd.get('ptech_rotate_shifts')),
                 cm_min_gap=int(cd.get('ptech_cm_min_gap') or 0),
@@ -556,6 +579,11 @@ def roster_generate(request):
                 morning_staff=cd.get('pharm_morning_staff') or [],
                 afternoon_staff=cd.get('pharm_afternoon_staff') or [],
                 cm_staff=cd.get('pharm_night_staff') or [],
+                staff_start_dates=collect_start_dates((
+                    ('pharm_morning', cd.get('pharm_morning_staff')),
+                    ('pharm_afternoon', cd.get('pharm_afternoon_staff')),
+                    ('pharm_night', cd.get('pharm_night_staff')),
+                )),
                 post_cm_rest_days=0,
                 rotate_shifts=bool(cd.get('pharm_rotate_shifts')),
                 cm_min_gap=int(cd.get('pharm_night_min_gap') or 0),
@@ -575,6 +603,13 @@ def roster_generate(request):
                 if raw.isdigit() and int(raw) > 0:
                     slot1_quota[s.id] = int(raw)
 
+            # Per-staff "include from" date; excludes staff on days before it
+            staff_start_dates = collect_start_dates((
+                ('slot1', cd['slot1_staff']),
+                ('slot2', cd.get('slot2_staff')),
+                ('slot3', cd.get('slot3_staff')),
+            ))
+
             generate_roster_entries(
                 roster,
                 slot1_staff=cd['slot1_staff'],
@@ -593,6 +628,7 @@ def roster_generate(request):
                 slot3_custom_days=cd.get('slot3_custom_days') or [],
                 slot3_min_gap=cd.get('slot3_min_gap') or 0,
                 slot1_quota=slot1_quota,
+                staff_start_dates=staff_start_dates,
             )
 
         log_activity(request, 'generated', 'Roster', roster)

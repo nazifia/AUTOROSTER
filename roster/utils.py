@@ -86,11 +86,15 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
                             slot1_days_pattern='all', slot1_custom_days=None, slot1_min_gap=0,
                             slot2_days_pattern='all', slot2_custom_days=None, slot2_min_gap=0,
                             slot3_days_pattern='all', slot3_custom_days=None, slot3_min_gap=0,
-                            slot1_quota=None):
+                            slot1_quota=None, staff_start_dates=None):
     """
     Generate RosterEntry objects for every day in the roster's month/year.
     Respects StaffAvailability, days patterns, and min-gap constraints.
+
+    staff_start_dates: {staff_id: date}. A staff is excluded on any day before
+    their start date (e.g. joined the unit mid-month).
     """
+    staff_start_dates = staff_start_dates or {}
     RosterEntry.objects.filter(roster=roster).delete()
 
     year, month = roster.year, roster.month
@@ -123,6 +127,9 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
     for day in range(1, num_days + 1):
         d = date(year, month, day)
         unavail = unavailability.get(d, set())
+        not_yet = {sid for sid, sd in staff_start_dates.items() if d < sd}
+        if not_yet:
+            unavail = unavail | not_yet
         weekday = d.weekday()
 
         s1 = s2 = s3 = None
@@ -181,15 +188,18 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
                                    morning_work_days=5, morning_off_days=2,
                                    afternoon_work_days=5, afternoon_off_days=2,
                                    night_work_days=2, night_off_days=5,
-                                   active_shifts=None):
+                                   active_shifts=None, staff_start_dates=None):
     """
     Generate PtechStaffEntry records (staff×day matrix) for a PTech roster.
 
     active_shifts: iterable of shift codes to include, e.g. ['M', 'A']. Defaults to all.
     rotate_shifts=True  – all staff rotate through selected shifts sequentially, staggered.
     rotate_shifts=False – staff stay in their assigned pool with work/off cycling.
+    staff_start_dates: {staff_id: date}. Staff get no row on days before their
+    start date (joined mid-month) – those cells stay blank.
     """
     PtechStaffEntry.objects.filter(roster=roster).delete()
+    staff_start_dates = staff_start_dates or {}
 
     if active_shifts is None:
         active_shifts = {'M', 'A', 'N'}
@@ -250,6 +260,7 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
             days_map[cur] = [
                 {'staff': staff, 'shift': 'L' if staff.id in unavail else _rotation_shift(d, staff_phase[staff.id])}
                 for staff in all_staff
+                if not (staff_start_dates.get(staff.id) and cur < staff_start_dates[staff.id])
             ]
 
     else:
@@ -283,6 +294,9 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
             day_list = []
 
             for staff in all_staff:
+                sd = staff_start_dates.get(staff.id)
+                if sd and cur < sd:
+                    continue  # not yet joined – no row this day
                 if staff.id in unavail:
                     shift = 'L'
                 elif staff.id in night_id_set and 'N' in active_shifts:

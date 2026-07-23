@@ -154,6 +154,7 @@
           <label class="form-label">Staff Pool <small class="text-muted">(select staff to include in this slot)</small></label>
           <p class="staff-hint">Select a unit above to highlight that unit's staff.</p>
           <p class="staff-hint">Set a number to cap how many times that staff appears in this slot; leave blank for unlimited.</p>
+          <p class="staff-hint">Set a date to include a staff only from that day onward (e.g. joined mid-month); leave blank for the whole month.</p>
           <div class="staff-checkbox-grid" id="slot1-staff-grid">
             {% for choice in form.slot1_staff %}
             <label data-staff-id="{{ choice.data.value }}">
@@ -162,6 +163,9 @@
                      class="slot1-count-input" placeholder="∞"
                      title="Max times in first-on-call (blank = unlimited)"
                      style="width:50px; margin-left:auto; font-size:.78rem; padding:1px 4px;">
+              <input type="date" name="slot1_start_{{ choice.data.value }}"
+                     title="Include from this date (blank = whole month)"
+                     style="width:130px; font-size:.72rem; padding:1px 4px;">
             </label>
             {% endfor %}
           </div>
@@ -212,6 +216,9 @@
             {% for choice in form.slot2_staff %}
             <label data-staff-id="{{ choice.data.value }}">
               {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              <input type="date" name="slot2_start_{{ choice.data.value }}"
+                     title="Include from this date (blank = whole month)"
+                     style="width:130px; margin-left:auto; font-size:.72rem; padding:1px 4px;">
             </label>
             {% endfor %}
           </div>
@@ -262,6 +269,9 @@
             {% for choice in form.slot3_staff %}
             <label data-staff-id="{{ choice.data.value }}">
               {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+              <input type="date" name="slot3_start_{{ choice.data.value }}"
+                     title="Include from this date (blank = whole month)"
+                     style="width:130px; margin-left:auto; font-size:.72rem; padding:1px 4px;">
             </label>
             {% endfor %}
           </div>
@@ -355,6 +365,9 @@
               {% for choice in form.pharm_morning_staff %}
               <label data-staff-id="{{ choice.data.value }}">
                 {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                <input type="date" name="pharm_morning_start_{{ choice.data.value }}"
+                       title="Include from this date (blank = whole month)"
+                       style="width:130px; margin-left:auto; font-size:.7rem; padding:1px 3px;">
               </label>
               {% endfor %}
             </div>
@@ -377,6 +390,9 @@
               {% for choice in form.pharm_afternoon_staff %}
               <label data-staff-id="{{ choice.data.value }}">
                 {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                <input type="date" name="pharm_afternoon_start_{{ choice.data.value }}"
+                       title="Include from this date (blank = whole month)"
+                       style="width:130px; margin-left:auto; font-size:.7rem; padding:1px 3px;">
               </label>
               {% endfor %}
             </div>
@@ -399,6 +415,9 @@
               {% for choice in form.pharm_night_staff %}
               <label data-staff-id="{{ choice.data.value }}">
                 {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                <input type="date" name="pharm_night_start_{{ choice.data.value }}"
+                       title="Include from this date (blank = whole month)"
+                       style="width:130px; margin-left:auto; font-size:.7rem; padding:1px 3px;">
               </label>
               {% endfor %}
             </div>
@@ -467,6 +486,9 @@
               {% for choice in form.ptech_morning_staff %}
               <label data-staff-id="{{ choice.data.value }}">
                 {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                <input type="date" name="ptech_morning_start_{{ choice.data.value }}"
+                       title="Include from this date (blank = whole month)"
+                       style="width:130px; margin-left:auto; font-size:.7rem; padding:1px 3px;">
               </label>
               {% endfor %}
             </div>
@@ -490,6 +512,9 @@
               {% for choice in form.ptech_afternoon_staff %}
               <label data-staff-id="{{ choice.data.value }}">
                 {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                <input type="date" name="ptech_afternoon_start_{{ choice.data.value }}"
+                       title="Include from this date (blank = whole month)"
+                       style="width:130px; margin-left:auto; font-size:.7rem; padding:1px 3px;">
               </label>
               {% endfor %}
             </div>
@@ -513,6 +538,9 @@
               {% for choice in form.ptech_cm_staff %}
               <label data-staff-id="{{ choice.data.value }}">
                 {{ choice.tag }}<span>{{ choice.choice_label }}</span>
+                <input type="date" name="ptech_cm_start_{{ choice.data.value }}"
+                       title="Include from this date (blank = whole month)"
+                       style="width:130px; margin-left:auto; font-size:.7rem; padding:1px 3px;">
               </label>
               {% endfor %}
             </div>
