@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
+from django.views.generic import RedirectView
 from django.views.static import serve
 
 from roster.views import spa
@@ -13,4 +14,6 @@ urlpatterns = [
     # ponytail: Django serves the frontend's few static files itself; put them
     # behind whitenoise or the web server if traffic ever makes this matter.
     re_path(r'^(?P<path>[\w-]+\.(?:js|css))$', serve, {'document_root': settings.BASE_DIR / 'web'}),
+    # Old template-era URLs (/accounts/login/, /rosters/...) and bookmarks land on the SPA.
+    re_path(r'^(?!api/|admin/).+$', RedirectView.as_view(url='/')),
 ]
