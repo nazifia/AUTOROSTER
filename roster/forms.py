@@ -1,7 +1,5 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Row, Column, Submit, HTML, Div, Field
 from .models import (Department, Hospital, Staff, Roster, Unit, StaffAvailability,
                       ROSTER_TYPE_CHOICES, PTECH_SHIFT_CONFIG_CHOICES, SHIFT_CONFIG_DETAILS,
                       STAFF_TYPE_CHOICES)
@@ -18,15 +16,6 @@ class HospitalForm(forms.ModelForm):
             'address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Hospital Road, Katsina'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'name',
-            'address',
-            Submit('submit', 'Save Hospital', css_class='btn btn-primary mt-3'),
-        )
-
 
 class DepartmentForm(forms.ModelForm):
     class Meta:
@@ -42,12 +31,6 @@ class DepartmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if hospital_id:
             self.fields['hospital'].initial = hospital_id
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'hospital',
-            'department_name',
-            Submit('submit', 'Save Department', css_class='btn btn-primary mt-3'),
-        )
 
 
 class UnitForm(forms.ModelForm):
@@ -64,12 +47,6 @@ class UnitForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if department_id:
             self.fields['department'].initial = department_id
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            'department',
-            'unit_name',
-            Submit('submit', 'Save Unit', css_class='btn btn-primary mt-3'),
-        )
 
 
 class StaffForm(forms.ModelForm):
@@ -91,20 +68,6 @@ class StaffForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if unit_id:
             self.fields['unit'].initial = unit_id
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            Row(
-                Column('unit', css_class='col-md-4'),
-                Column('staff_type', css_class='col-md-3'),
-                Column('title', css_class='col-md-2'),
-                Column('name', css_class='col-md-3'),
-            ),
-            Row(
-                Column('phone_number', css_class='col-md-4'),
-            ),
-            Field('is_active'),
-            Submit('submit', 'Save Staff', css_class='btn btn-primary mt-3'),
-        )
 
 
 DAYS_OF_WEEK_CHOICES = [
@@ -463,32 +426,3 @@ class StaffAvailabilityForm(forms.ModelForm):
             raise ValidationError('End date must be on or after start date.')
         return cleaned
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            Row(
-                Column('start_date', css_class='col-md-4'),
-                Column('end_date', css_class='col-md-4'),
-                Column('reason', css_class='col-md-4'),
-            ),
-            Submit('submit', 'Save', css_class='btn btn-primary mt-2'),
-        )
-
-
-class RosterEntryEditForm(forms.Form):
-    slot1 = forms.ModelChoiceField(
-        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM'),
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
-    )
-    slot2 = forms.ModelChoiceField(
-        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM'),
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
-    )
-    slot3 = forms.ModelChoiceField(
-        queryset=Staff.objects.filter(is_active=True, staff_type='PHARM'),
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
-    )

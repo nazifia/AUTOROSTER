@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoRoster | FTH Katsina</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body class="auth-mode">
+
+<!-- Sign-in / register screens render here -->
+<div id="auth"></div>
+
+<div id="shell" hidden>
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-brand d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <div class="sidebar-logo">
+          <i class="fas fa-calendar-alt text-white"></i>
+        </div>
+        <div>
+          <h5>AutoRoster</h5>
+          <small>FTH Katsina</small>
+        </div>
+      </div>
+      <button id="sidebarClose" class="btn btn-sm p-1 ms-2" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);line-height:1;" title="Collapse sidebar">
+        <i class="fas fa-chevron-left" style="font-size:0.75rem;"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-nav" id="sidebar-nav"></div>
+
+    <div class="sidebar-footer">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div id="user-name" style="color:#fff;font-size:.8rem;font-weight:600;"></div>
+          <small id="user-phone" style="color:rgba(255,255,255,0.4);"></small>
+        </div>
+        <button id="logoutBtn" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;" title="Logout">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Mobile overlay -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- Main Content -->
+  <div id="main-content">
+    <div class="topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-light" id="sidebarToggle" title="Toggle sidebar">
+          <i class="fas fa-bars"></i>
+        </button>
+        <span class="topbar-title" id="page-title">Dashboard</span>
+      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+
+    <div class="page-content" id="main"></div>
+  </div>
+
+  <!-- Auto-logout warning modal -->
+  <div class="modal fade" id="idleWarningModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-warning text-dark border-0">
+          <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Session Expiring Soon</h5>
+        </div>
+        <div class="modal-body text-center py-4">
+          <p class="mb-1">You've been inactive. Session expires in</p>
+          <h2 class="fw-bold text-danger" id="idleCountdown">60</h2>
+          <p class="text-muted small">seconds. Click below to stay logged in.</p>
+        </div>
+        <div class="modal-footer border-0 justify-content-center gap-2">
+          <button class="btn btn-primary px-4" id="idleStayBtn">Stay Logged In</button>
+          <button class="btn btn-outline-secondary px-4" id="idleLogoutBtn">Logout Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
