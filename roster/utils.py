@@ -47,10 +47,12 @@ def _resolve_active_days(days_pattern, custom_days):
 
 
 def _pick(pool, idx, unavailable_ids, recently_assigned, current_day, min_gap, mode,
-          quota=None, used_counts=None):
+          quota=None, used_counts=None, avoid_id=None):
     """Pick next available staff; return (staff_or_None, new_idx).
 
     quota: {staff_id: max appearances}. Staff at or over their cap are skipped.
+    avoid_id: rotate mode prefers anyone else (e.g. whoever had this weekday
+    last week), falling back to avoid_id only if nobody else is eligible.
     """
     if not pool:
         return None, idx
@@ -74,10 +76,13 @@ def _pick(pool, idx, unavailable_ids, recently_assigned, current_day, min_gap, m
                 return s, idx
         return None, idx
 
-    for offset in range(len(pool)):
-        candidate = pool[(idx + offset) % len(pool)]
-        if eligible(candidate):
-            return candidate, (idx + offset + 1) % len(pool)
+    for skip_avoided in (True, False):
+        for offset in range(len(pool)):
+            candidate = pool[(idx + offset) % len(pool)]
+            if skip_avoided and candidate.id == avoid_id:
+                continue
+            if eligible(candidate):
+                return candidate, (idx + offset + 1) % len(pool)
     return None, idx
 
 
@@ -117,6 +122,7 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
 
     s1_quota = slot1_quota or {}
     s1_used = {}
+    s1_by_day = {}  # day -> staff_id, so a weekday never repeats last week's person
 
     s1_idx = s2_idx = s3_idx = 0
     s1_last = {}
@@ -136,8 +142,10 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
 
         if s1_pool and weekday in s1_active:
             s1, s1_idx = _pick(s1_pool, s1_idx, unavail, s1_last, day, s1_min_gap, slot1_mode,
-                               quota=s1_quota, used_counts=s1_used)
+                               quota=s1_quota, used_counts=s1_used,
+                               avoid_id=s1_by_day.get(day - 7))
             if s1:
+                s1_by_day[day] = s1.id
                 s1_last[s1.id] = day
                 s1_used[s1.id] = s1_used.get(s1.id, 0) + 1
 
