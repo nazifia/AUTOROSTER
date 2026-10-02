@@ -547,6 +547,7 @@ def roster_generate(request):
             night_work_days=int(cd.get('pharm_night_work_days') or 2),
             night_off_days=int(cd.get('pharm_night_off_days') or 5),
             active_shifts=cd.get('pharm_active_shifts') or ['M', 'A', 'N'],
+            include_weekend_morning=bool(cd.get('pharm_weekend_morning')),
         )
     else:
         # Per-staff cap on first-on-call (slot1) appearances; blank = unlimited

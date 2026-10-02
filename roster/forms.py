@@ -336,6 +336,11 @@ class RosterGenerateForm(forms.Form):
         required=True,
         label='Shifts to include in roster',
     )
+    pharm_weekend_morning = forms.BooleanField(
+        required=False,
+        initial=True,
+        label='Include weekend morning duty',
+    )
     pharm_morning_work_days = forms.IntegerField(
         initial=5, min_value=1, max_value=30, required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control form-control-sm', 'style': 'width:70px', 'min': '1', 'max': '30'}),

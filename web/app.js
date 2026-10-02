@@ -1574,6 +1574,10 @@ function shiftSectionHtml(p, staff, { title, icon, note, nightField, nightGrid }
       </div>
       ${p === 'pharm' ? `
       <div class="mt-3 pt-2 border-top">
+        <div class="form-check mb-2">
+          <input type="checkbox" name="pharm_weekend_morning" class="form-check-input" id="id_pharm_weekend_morning" checked>
+          <label class="form-check-label" for="id_pharm_weekend_morning">Include weekend (Sat/Sun) morning duty</label>
+        </div>
         <div class="min-gap-row">
           <label for="id_pharm_night_min_gap">Min days between Night assignments for same staff (0 = no restriction):</label>
           ${numInput('pharm_night_min_gap', 0, 0, 30, 80)}

@@ -164,7 +164,7 @@ def generate_roster_entries(roster, slot1_staff, slot2_staff, slot3_staff,
     RosterEntry.objects.bulk_create(entries)
 
 
-def _ensure_daily_coverage(days_map, required_shifts=('M', 'A', 'N')):
+def _ensure_daily_coverage(days_map, required_shifts=('M', 'A', 'N'), no_weekend_morning=False):
     """
     Post-processing pass: guarantee each shift in required_shifts has ≥1 staff every day.
     Staff on 'O' (off) are reassigned to cover missing shifts.
@@ -176,7 +176,8 @@ def _ensure_daily_coverage(days_map, required_shifts=('M', 'A', 'N')):
     for cur in sorted(days_map.keys()):
         day_list = days_map[cur]
         covered = {e['shift'] for e in day_list if e['shift'] not in ('O', 'L')}
-        missing = [s for s in required_shifts if s not in covered]
+        missing = [s for s in required_shifts if s not in covered
+                   and not (no_weekend_morning and s == 'M' and cur.weekday() >= 5)]
         if not missing:
             continue
 
@@ -196,7 +197,8 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
                                    morning_work_days=5, morning_off_days=2,
                                    afternoon_work_days=5, afternoon_off_days=2,
                                    night_work_days=2, night_off_days=5,
-                                   active_shifts=None, staff_start_dates=None):
+                                   active_shifts=None, staff_start_dates=None,
+                                   include_weekend_morning=True):
     """
     Generate PtechStaffEntry records (staff×day matrix) for a PTech roster.
 
@@ -327,8 +329,17 @@ def generate_ptech_roster_entries(roster, morning_staff, afternoon_staff, cm_sta
                 day_list.append({'staff': staff, 'shift': shift})
             days_map[cur] = day_list
 
+    if not include_weekend_morning:
+        # Sat/Sun morning duty dropped: M becomes Off (leave stays Leave)
+        for cur, day_list in days_map.items():
+            if cur.weekday() >= 5:
+                for item in day_list:
+                    if item['shift'] == 'M':
+                        item['shift'] = 'O'
+
     required_shifts = tuple(code for code, _, _ in segments)
-    _ensure_daily_coverage(days_map, required_shifts=required_shifts)
+    _ensure_daily_coverage(days_map, required_shifts=required_shifts,
+                           no_weekend_morning=not include_weekend_morning)
 
     entries = []
     for cur, day_list in days_map.items():
