@@ -106,6 +106,23 @@ class ApiSmokeTests(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn('spreadsheetml', resp['Content-Type'])
 
+    def test_roster_search(self):
+        """Every word must match the title, unit, department, hospital, type,
+        month or year — the same rules the generate page's search box uses."""
+        def ids(q):
+            resp = self.client.get(reverse('roster_list'), {'q': q})
+            self.assertEqual(resp.status_code, 200)
+            return [r['id'] for r in resp.json()['results']]
+
+        self.assertEqual(ids(''), [self.ptech_roster.pk, self.roster.pk])
+        self.assertEqual(ids('ptech'), [self.ptech_roster.pk])
+        self.assertEqual(ids('july'), [self.roster.pk])
+        self.assertEqual(ids('aug 2026'), [self.ptech_roster.pk])
+        self.assertEqual(ids('h1'), [self.ptech_roster.pk, self.roster.pk])
+        self.assertEqual(ids('pharmacists'), [self.ptech_roster.pk, self.roster.pk])
+        self.assertEqual(ids('no-such-roster'), [])
+        self.assertEqual(self.client.get(reverse('roster_list'), {'q': 'ptech'}).json()['total'], 2)
+
     def test_entry_update(self):
         resp = self.client.get(reverse('entry_update', args=[self.entry.pk]))
         self.assertEqual(resp.status_code, 405)

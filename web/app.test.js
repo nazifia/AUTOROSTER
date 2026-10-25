@@ -16,9 +16,11 @@ const slice = (from, to) => {
 };
 const code = slice('const $ = ', 'let me = null;')
   + slice('function filterBarHtml(', 'const ACTION_BADGES')
-  + slice('function parseHash(', 'async function route()');
-const { trunc, qs, parseHash, filterBarHtml } = new Function(
-  `${code}; return { trunc, qs, parseHash, filterBarHtml };`)();
+  + slice('function parseHash(', 'async function route()')
+  + slice('const exportUrl = ', '/* "3 of 12 rosters')
+  + slice('function rosterSearchStatus(', 'async function viewRosters(');
+const { trunc, qs, parseHash, filterBarHtml, searchTerms, matchesSearch, rosterRowsHtml, rosterSearchStatus } = new Function(
+  `${code}; return { trunc, qs, parseHash, filterBarHtml, searchTerms, matchesSearch, rosterRowsHtml, rosterSearchStatus };`)();
 
 // Django truncatechars: n characters including the ellipsis.
 assert.strictEqual(trunc('ABCDEF', 4), 'ABC…');
@@ -27,6 +29,24 @@ assert.strictEqual(trunc(null, 4), '');
 
 assert.strictEqual(qs({ a: 1, b: '', c: null, d: undefined }), '?a=1');
 assert.strictEqual(qs({}), '');
+
+// Unit search: case-insensitive, every word anywhere in the haystack.
+assert.deepStrictEqual(searchTerms('  NHIA   Pharmacy '), ['nhia', 'pharmacy']);
+assert.deepStrictEqual(searchTerms('   '), []);
+const nhia = 'nhia pharmacy pharmacy department — nhia pharmacy fth katsina';
+assert.ok(matchesSearch(nhia, searchTerms('nhia')));
+assert.ok(matchesSearch(nhia, searchTerms('KATSINA pharmacy')), 'order-independent');
+assert.ok(!matchesSearch(nhia, searchTerms('nhia emergency')), 'all words must match');
+assert.ok(matchesSearch(nhia, searchTerms('  ')), 'empty query matches everything');
+
+// Roster list search: counts while filtering, a plain empty state when not.
+assert.strictEqual(rosterSearchStatus({ count: 3, total: 12 }, 'nhia'), '3 of 12 rosters matching “nhia”');
+assert.strictEqual(rosterSearchStatus({ count: 1, total: 1 }, 'july'), '1 of 1 roster matching “july”');
+assert.strictEqual(rosterSearchStatus({ count: 2 }, 'x'), '2 of 2 rosters matching “x”', 'older API without total');
+assert.strictEqual(rosterSearchStatus({ count: 0, total: 12 }, 'zzz'), 'No rosters match “zzz”.');
+assert.strictEqual(rosterSearchStatus({ count: 5, total: 5 }, ''), '');
+assert.ok(rosterRowsHtml({ results: [] }, 'zzz').includes('No rosters match “zzz”.'));
+assert.ok(rosterRowsHtml({ results: [] }, '').includes('No rosters yet.'));
 
 assert.deepStrictEqual(parseHash(''), { path: '/', params: {} });
 assert.deepStrictEqual(parseHash('#/staff?hospital=2&page=3'), { path: '/staff', params: { hospital: '2', page: '3' } });

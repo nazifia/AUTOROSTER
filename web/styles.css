@@ -288,6 +288,12 @@ body.auth-mode #sidebar-overlay { display: none; }
   display: none;
 }
 .unit-filter-note.visible { display: block; }
+/* Search boxes over selects and lists: they look like part of the control. */
+.list-search .input-group-text { background: #f8fafc; color: #6b7280; }
+.list-search .form-control { font-size: .82rem; }
+.list-search .btn { font-size: .75rem; }
+.roster-search { width: 320px; }
+@media (max-width: 576px) { .roster-search { width: 100%; } }
 .pattern-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
 .pattern-section .section-label { font-size: .82rem; font-weight: 600; color: #4b5563; margin-bottom: 6px; }
 .days-inline { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -384,16 +384,54 @@ def staff_availability_delete(request, pk):
 
 # ── Roster ────────────────────────────────────────────────────────────────────
 
+def month_numbers(term):
+    """Month numbers whose name or abbreviation starts with `term`."""
+    t = term.lower()
+    return [i for i in range(1, 13)
+            if calendar.month_name[i].lower().startswith(t)
+            or calendar.month_abbr[i].lower().startswith(t)]
+
+
+def filter_rosters(rosters, query):
+    """Narrow the roster list to the rows a search box would find.
+
+    Every whitespace-separated word has to match somewhere — the title, the
+    unit, its department or hospital, the roster type, the month name or the
+    year — so "nhia july" finds July's roster for that unit, whatever the word
+    order. The rules mirror web/app.js's searchTerms/matchesSearch helpers.
+    """
+    for term in query.split():
+        hit = (Q(roster_title__icontains=term)
+               | Q(unit__unit_name__icontains=term)
+               | Q(unit__department__department_name__icontains=term)
+               | Q(unit__department__hospital__name__icontains=term)
+               | Q(roster_type__icontains=term))
+        months = month_numbers(term)
+        if months:
+            hit |= Q(month__in=months)
+        if len(term) == 4 and term.isdigit():
+            hit |= Q(year=int(term))
+        rosters = rosters.filter(hit)
+    return rosters
+
+
 @api_login
 def roster_list(request):
     rosters = Roster.objects.select_related('unit__department__hospital').annotate(
         entries_count=Count('entries', distinct=True),
         ptech_entries_count=Count('ptech_entries', distinct=True),
     ).order_by('-year', '-month')
-    return JsonResponse(paginate(request, rosters, 10, lambda r: {
-        **roster_json(r), 'created': fmt(r.created_at, 'M d, Y'),
-        'entries_count': r.ptech_entries_count if r.roster_type == 'PTECH' else r.entries_count,
-    }))
+    query = (request.GET.get('q') or '').strip()
+    if query:
+        rosters = filter_rosters(rosters, query)
+    return JsonResponse({
+        **paginate(request, rosters, 10, lambda r: {
+            **roster_json(r), 'created': fmt(r.created_at, 'M d, Y'),
+            'entries_count': r.ptech_entries_count if r.roster_type == 'PTECH' else r.entries_count,
+        }),
+        # For the "3 of 12 rosters matching …" line next to the search box.
+        'total': Roster.objects.count(),
+    })
 
 
 def roster_detail_json(roster):

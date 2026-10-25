@@ -18,6 +18,11 @@ const qs = (params) => {
 };
 const plural = (n) => (n === 1 ? '' : 's');
 
+/* Query of a filterable select: lower-cased words, "  Nhia  PHARM " -> [nhia,
+ * pharm]. Every word has to appear in the option's haystack, in any order. */
+const searchTerms = (q) => String(q ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+const matchesSearch = (haystack, terms) => terms.every((t) => haystack.includes(t));
+
 let me = null; // signed-in user from /api/auth/me/
 
 /* Django-messages equivalent: queued now, shown atop the next render. */
@@ -133,6 +138,80 @@ function actionBadge(action) {
   const b = ACTION_BADGES[action];
   return b ? `<span class="badge" style="background:${b[0]};color:${b[1]};">${b[2]}</span>`
     : `<span class="badge bg-secondary">${esc(action)}</span>`;
+}
+
+/* ------------------------------------------------------ searchable selects */
+
+/* A text box that narrows a <select>'s options, for lists too long to scroll.
+ * Each option carries the lower-cased words it answers to in data-search;
+ * matching re-renders the option list, so the narrowed list is what the native
+ * dropdown opens (hiding options with CSS is not reliable everywhere). The
+ * select keeps its name/value/required, so the form posts exactly as before.
+ * A lone match is picked automatically — that is what typing a name is for —
+ * and a pick the filter hides is dropped rather than left selected invisibly.
+ * The caller's own filter (e.g. a department) composes through .filter(). */
+function searchableSelect(select, { input, status, clear, noun = 'option' }) {
+  const placeholder = select.options[0] || new Option('', '');
+  const all = [...select.options].filter((opt) => opt.value);
+  let allow = () => true;
+
+  const haystack = (opt) => opt.dataset.search || opt.textContent.trim().toLowerCase();
+  const matches = () => {
+    const terms = searchTerms(input.value);
+    return all.filter((opt) => allow(opt) && matchesSearch(haystack(opt), terms));
+  };
+  const announce = () => select.dispatchEvent(new Event('change', { bubbles: true }));
+
+  function render() {
+    const query = input.value.trim();
+    const found = matches();
+    const filtering = Boolean(query) || found.length !== all.length;
+    const before = select.value;
+    select.replaceChildren(placeholder, ...found);
+    // Re-set the value: options moved around a <select> must not lose the pick,
+    // and a pick the filter hides is dropped rather than left selected invisibly.
+    const kept = before && found.some((opt) => opt.value === before);
+    select.value = kept ? before : (filtering && found.length === 1 ? found[0].value : '');
+    if (select.value !== before) announce();
+    if (clear) clear.hidden = !query;
+    if (status) {
+      status.textContent = !filtering ? ''
+        : found.length
+          ? `Showing ${found.length} of ${all.length} ${noun}s${query ? ` matching “${query}”` : ''}`
+          : `No ${noun}s match “${query}”.`;
+      status.classList.toggle('text-danger', filtering && !found.length);
+      status.classList.toggle('text-muted', !filtering || found.length > 0);
+    }
+  }
+
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!input.value) return;
+      e.preventDefault();
+      input.value = '';
+      render();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      select.focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault(); // the box sits in a form: Enter must pick, not submit
+      const found = matches();
+      if (found.length) {
+        const before = select.value;
+        select.value = found[0].value;
+        if (select.value !== before) announce();
+      }
+      select.focus();
+    }
+  });
+  if (clear) clear.addEventListener('click', () => { input.value = ''; render(); input.focus(); });
+
+  render();
+  return {
+    /* Replace the caller-side predicate; re-renders, keeping the search text. */
+    filter(predicate) { allow = predicate || (() => true); render(); },
+  };
 }
 
 const isAdmin = () => me?.is_admin;
@@ -1179,51 +1258,119 @@ async function viewAvailability(id) {
 
 const exportUrl = (id) => `/api/rosters/${id}/export/`;
 
+const rosterPill = (bg, fg, text) => `<span class="badge" style="background:${bg};color:${fg};font-size:.75rem;padding:3px 8px;border-radius:12px;">${text}</span>`;
+
+/* Rows of the roster list, re-rendered in place as the search narrows it. */
+function rosterRowsHtml(data, query) {
+  return data.results.map((r) => `
+    <tr>
+      <td style="font-weight:600;font-size:.875rem;">${esc(r.roster_title)}</td>
+      <td style="font-size:.82rem;">${esc(trunc(r.unit_name, 35))}</td>
+      <td>
+        <span class="badge" style="background:#e8f0f7;color:#1B4F72;font-weight:600;font-size:.8rem;padding:5px 10px;border-radius:20px;">${esc(r.period)}</span>
+      </td>
+      <td style="font-size:.82rem;">
+        ${r.roster_type === 'PTECH' ? rosterPill('#fef3c7', '#92400e', 'PTech') : rosterPill('#e8f0f7', '#1B4F72', `Call (${r.num_slots}s)`)}
+      </td>
+      <td style="font-size:.875rem;">${r.entries_count}</td>
+      <td style="font-size:.82rem;color:#6b7280;">${esc(r.created)}</td>
+      <td class="text-end">
+        <div class="d-flex gap-1 justify-content-end">
+          <a href="#/rosters/${r.id}" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
+          <a href="${exportUrl(r.id)}" class="btn btn-sm btn-success" title="Export Excel"><i class="fas fa-file-excel"></i></a>
+          <a href="#/rosters/${r.id}/delete" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></a>
+        </div>
+      </td>
+    </tr>`).join('') || `
+    <tr>
+      <td colspan="7" class="text-center py-5 text-muted">
+        <i class="fas fa-calendar-times fa-3x mb-3 opacity-25 d-block"></i>
+        ${query ? `No rosters match “${esc(query)}”.` : 'No rosters yet. <a href="#/rosters/generate">Generate one</a>.'}
+      </td>
+    </tr>`;
+}
+
+/* "3 of 12 rosters matching “nhia”", nothing while the box is empty. */
+function rosterSearchStatus(data, query) {
+  if (!query) return '';
+  if (!data.count) return `No rosters match “${query}”.`;
+  const total = data.total ?? data.count; // tolerate an older API
+  return `${data.count} of ${total} roster${plural(total)} matching “${query}”`;
+}
+
 async function viewRosters(m, params) {
-  const data = await Api.get('/api/rosters/', { page: params.page });
-  const pill = (bg, fg, text) => `<span class="badge" style="background:${bg};color:${fg};font-size:.75rem;padding:3px 8px;border-radius:12px;">${text}</span>`;
+  const query = (params.q || '').trim();
+  const data = await Api.get('/api/rosters/', { page: params.page, q: query });
   render({
     title: 'All Rosters',
     docTitle: 'Rosters',
     actions: `<a href="#/rosters/generate" class="btn btn-primary btn-sm"><i class="fas fa-magic me-1"></i> Generate Roster</a>`,
     body: `
       <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:#fff; border-bottom:2px solid #e8f0f7;">
+          <span style="color:#1B4F72;"><i class="fas fa-list-alt me-2"></i>Rosters</span>
+          <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm list-search roster-search">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control" id="roster-search" autocomplete="off" value="${esc(query)}"
+                     placeholder="Search title, unit, period or type" aria-label="Search rosters">
+              <button type="button" class="btn btn-outline-secondary" id="roster-search-clear"
+                      title="Clear search" ${query ? '' : 'hidden'}><i class="fas fa-times"></i></button>
+            </div>
+            <span class="small text-muted" id="roster-search-status" aria-live="polite">${esc(rosterSearchStatus(data, query))}</span>
+          </div>
+        </div>
         <div class="card-body p-0">
           <table class="table table-modern mb-0">
             <thead><tr><th>Title</th><th>Unit</th><th>Period</th><th>Type</th><th>Entries</th><th>Created</th><th></th></tr></thead>
-            <tbody>
-              ${data.results.map((r) => `
-              <tr>
-                <td style="font-weight:600;font-size:.875rem;">${esc(r.roster_title)}</td>
-                <td style="font-size:.82rem;">${esc(trunc(r.unit_name, 35))}</td>
-                <td>
-                  <span class="badge" style="background:#e8f0f7;color:#1B4F72;font-weight:600;font-size:.8rem;padding:5px 10px;border-radius:20px;">${esc(r.period)}</span>
-                </td>
-                <td style="font-size:.82rem;">
-                  ${r.roster_type === 'PTECH' ? pill('#fef3c7', '#92400e', 'PTech') : pill('#e8f0f7', '#1B4F72', `Call (${r.num_slots}s)`)}
-                </td>
-                <td style="font-size:.875rem;">${r.entries_count}</td>
-                <td style="font-size:.82rem;color:#6b7280;">${esc(r.created)}</td>
-                <td class="text-end">
-                  <div class="d-flex gap-1 justify-content-end">
-                    <a href="#/rosters/${r.id}" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
-                    <a href="${exportUrl(r.id)}" class="btn btn-sm btn-success" title="Export Excel"><i class="fas fa-file-excel"></i></a>
-                    <a href="#/rosters/${r.id}/delete" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></a>
-                  </div>
-                </td>
-              </tr>`).join('') || `
-              <tr>
-                <td colspan="7" class="text-center py-5 text-muted">
-                  <i class="fas fa-calendar-times fa-3x mb-3 opacity-25 d-block"></i>
-                  No rosters yet. <a href="#/rosters/generate">Generate one</a>.
-                </td>
-              </tr>`}
-            </tbody>
+            <tbody id="roster-rows">${rosterRowsHtml(data, query)}</tbody>
           </table>
         </div>
       </div>
-      ${pagerHtml(data, '/rosters', {})}`,
+      <div id="roster-pager">${pagerHtml(data, '/rosters', { q: query })}</div>`,
   });
+  wireRosterSearch();
+}
+
+/* The list is paginated server-side, so the search goes to the API and only
+ * the table is swapped: the box keeps focus and the address bar keeps the
+ * query. Typing always restarts at page 1; pager links carry the query on. */
+function wireRosterSearch() {
+  const input = $('#roster-search');
+  if (!input) return;
+  const clear = $('#roster-search-clear');
+  const status = $('#roster-search-status');
+  const rows = $('#roster-rows');
+  const pager = $('#roster-pager');
+  let timer = null;
+  let seq = 0;
+
+  async function refresh() {
+    const q = input.value.trim();
+    const mine = ++seq;
+    clear.hidden = !q;
+    const data = await Api.get('/api/rosters/', { q });
+    if (mine !== seq || !rows.isConnected) return; // a later keystroke, or a page change, won
+    rows.innerHTML = rosterRowsHtml(data, q);
+    pager.innerHTML = pagerHtml(data, '/rosters', { q });
+    status.textContent = rosterSearchStatus(data, q);
+    history.replaceState(null, '', `#/rosters${qs({ q })}`); // shareable, no re-route
+  }
+
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(refresh, 250); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(timer);
+      refresh();
+    } else if (e.key === 'Escape' && input.value) {
+      e.preventDefault();
+      clearTimeout(timer);
+      input.value = '';
+      refresh();
+    }
+  });
+  clear.addEventListener('click', () => { clearTimeout(timer); input.value = ''; refresh(); input.focus(); });
 }
 
 const SHIFTS = [['M', 'Morning'], ['A', 'Afternoon'], ['N', 'Night'], ['CM', 'Combined Morning'], ['O', 'Off'], ['L', 'Leave']];
@@ -1588,6 +1735,13 @@ function shiftSectionHtml(p, staff, { title, icon, note, nightField, nightGrid }
 
 async function viewGenerate() {
   const o = await Api.get('/api/rosters/generate/');
+  // Unit options answer to the words a user would search: unit, department and
+  // hospital name, lower-cased once here so filtering is a plain substring test.
+  const deptLabel = new Map(o.departments.map((d) => [String(d.id), d.label]));
+  const unitOption = (u) => {
+    const words = `${u.str} ${deptLabel.get(String(u.department)) || ''}`.toLowerCase();
+    return `<option value="${u.id}" data-dept="${u.department}" data-search="${esc(words)}">${esc(u.str)}</option>`;
+  };
   render({
     title: 'Generate Roster',
     body: `
@@ -1607,12 +1761,22 @@ async function viewGenerate() {
                   </select>
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">Unit <span class="text-danger">*</span></label>
+                  <label class="form-label" for="id_unit">Unit <span class="text-danger">*</span></label>
+                  <div class="input-group input-group-sm mb-2 list-search">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" id="unit-search" autocomplete="off"
+                           placeholder="Search units — name, department or hospital"
+                           aria-label="Search units"
+                           aria-controls="id_unit" aria-describedby="unit-search-status">
+                    <button type="button" class="btn btn-outline-secondary" id="unit-search-clear"
+                            title="Clear search" hidden><i class="fas fa-times"></i></button>
+                  </div>
                   <select name="unit" class="form-select" id="id_unit" required>
                     <option value="">---------</option>
-                    ${o.units.map((u) => `<option value="${u.id}">${esc(u.str)}</option>`).join('')}
+                    ${o.units.map(unitOption).join('')}
                   </select>
                   <div class="text-danger small" data-err="unit" hidden></div>
+                  <div class="small text-muted" id="unit-search-status" style="min-height:1.15em;" aria-live="polite"></div>
                   <div class="unit-filter-note mt-1" id="unit-staff-note">
                     <i class="fas fa-filter me-1"></i>Staff checkboxes below filtered to this unit.
                     <a href="#" id="show-all-staff" class="ms-1">Show all</a>
@@ -1736,21 +1900,21 @@ function wireGenerate(form, o) {
     unitNote.classList.remove('visible');
   }
 
+  // The unit list grows with the hospital: a search box narrows it, and the
+  // department dropdown composes with that as the coarser filter. Picking a
+  // department starts the search afresh rather than leaving a stale query.
+  unitSelect.addEventListener('change', () => (unitSelect.value ? filterStaffByUnit(unitSelect.value) : showAllStaff()));
+  const unitPicker = searchableSelect(unitSelect, {
+    input: $('#unit-search'),
+    status: $('#unit-search-status'),
+    clear: $('#unit-search-clear'),
+    noun: 'unit',
+  });
   deptFilter.addEventListener('change', () => {
     const deptId = deptFilter.value;
-    const validIds = new Set(o.units.filter((u) => String(u.department) === deptId).map((u) => String(u.id)));
-    [...unitSelect.options].forEach((opt) => {
-      opt.style.display = (!deptId || !opt.value || validIds.has(opt.value)) ? '' : 'none';
-    });
-    if (!deptId) return;
-    // Auto-select if only one unit in dept
-    const visible = [...unitSelect.options].filter((opt) => opt.value && opt.style.display !== 'none');
-    if (visible.length === 1) {
-      unitSelect.value = visible[0].value;
-      filterStaffByUnit(visible[0].value);
-    }
+    $('#unit-search').value = '';
+    unitPicker.filter((opt) => !deptId || opt.dataset.dept === deptId);
   });
-  unitSelect.addEventListener('change', () => (unitSelect.value ? filterStaffByUnit(unitSelect.value) : showAllStaff()));
   $('#show-all-staff').addEventListener('click', (e) => { e.preventDefault(); showAllStaff(); });
 
   $$('[name="roster_type"]', form).forEach((r) => r.addEventListener('change', updateRosterType));
